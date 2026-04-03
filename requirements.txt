@@ -1,0 +1,6 @@
+MetaTrader5
+streamlit
+pandas
+python-dotenv
+pandas_ta
+anthropic
