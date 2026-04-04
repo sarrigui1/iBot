@@ -13,6 +13,8 @@ from ui_components import (
     render_sidebar,
     render_sessions_clock,
     render_market_semaphore,
+    render_news_marquee,
+    render_news_panel,
     render_technical_analysis,
     render_mtf_badges,
     render_ai_decision,
@@ -21,14 +23,19 @@ from ui_components import (
 )
 from logger_service import LoggerService
 from feedback_service import FeedbackService
+from news_service import NewsService
 from i18n import get_translations
 from config import (
     SYMBOLS,
+    SYMBOL_CURRENCIES,
     AUTONOMOUS_CONFIDENCE_THRESHOLD,
     MAX_SPREAD_POINTS,
     MAX_DAILY_LOSS_PCT,
     MAX_POSITIONS_PER_SYMBOL,
     AI_MIN_INTERVAL_MINS,
+    NEWS_SHIELD_MINUTES,
+    NEWS_CACHE_TTL,
+    NEWS_SENTIMENT_CACHE,
 )
 
 # --- INICIALIZACIÓN TEMPRANA DEL IDIOMA ---
@@ -43,6 +50,24 @@ st.set_page_config(page_title=t["page_title"], page_icon="🤖", layout="wide")
 @st.cache_resource
 def get_services():
     return MT5Service(), AnthropicService()
+
+
+# Caché de noticias — TTL configurable para no ralentizar cada refresco
+@st.cache_data(ttl=NEWS_CACHE_TTL)
+def fetch_news_calendar(symbol: str) -> dict:
+    """Cached: calendario económico del día."""
+    currencies = SYMBOL_CURRENCIES.get(symbol, ["USD"])
+    cal = NewsService.get_economic_calendar(currencies)
+    # Adjuntar shield y noticias recientes dentro del mismo objeto cacheado
+    cal["_shield"]       = NewsService.check_news_shield(cal, NEWS_SHIELD_MINUTES)
+    cal["_recent_news"]  = NewsService.get_recent_news(symbol)
+    return cal
+
+
+@st.cache_data(ttl=NEWS_SENTIMENT_CACHE)
+def fetch_news_sentiment(symbol: str) -> dict:
+    """Cached: sentimiento de mercado."""
+    return NewsService.get_market_sentiment(symbol)
 
 
 service, ai_agent = get_services()
@@ -164,6 +189,14 @@ with tab_dash:
     smc_df, smc_swings     = SMCService.get_chart_data(selected_symbol)
     h1_state  = mtf_state.get("h1", {})
 
+    # Fetch noticias (cacheadas — no ralentizan el ciclo de refresco)
+    news_data  = fetch_news_calendar(selected_symbol)
+    sentiment  = fetch_news_sentiment(selected_symbol)
+    shield     = news_data.get("_shield", {})
+
+    # Marquee de noticias (antes del semáforo)
+    render_news_marquee(news_data, sentiment, t)
+
     # Q6 — Semáforo (pre-calcular valores de riesgo para pasarlos como primitivos)
     _sem_history  = LoggerService.get_history()
     _sem_spread   = service.get_spread(selected_symbol)
@@ -210,12 +243,38 @@ with tab_dash:
                         _feedback_blk  = FeedbackService.build_prompt_block(
                             symbol=selected_symbol, session=_cur_session
                         )
+                        # Fundamental block — enriquece el contexto IA con noticias
+                        _hdr   = t["fundamental_block_hdr"]
+                        _lines = [f"{_hdr}:"]
+                        if not sentiment.get("error"):
+                            _lines.append(
+                                f"  Sentiment: {sentiment.get('label','N/A')} "
+                                f"(score={sentiment.get('score',0):.2f}, "
+                                f"buzz={sentiment.get('buzz',0)})"
+                            )
+                        _events = news_data.get("high_impact", [])
+                        if _events:
+                            for _ev in _events[:3]:
+                                _lines.append(
+                                    f"  Event: {_ev.get('event','?')} "
+                                    f"[{_ev.get('currency','?')}] "
+                                    f"in {_ev.get('mins_away','?')} min"
+                                )
+                        else:
+                            _lines.append(f"  {t['news_no_events']}")
+                        if shield.get("blocking"):
+                            _lines.append(
+                                f"  NEWS SHIELD BLOCKING: {shield.get('event_name','?')} "
+                                f"({shield.get('currency','?')}) in {shield.get('mins_away','?')} min"
+                            )
+                        _fundamental_blk = "\n".join(_lines)
                         ai_res = ai_agent.get_strategy_decision(
                             selected_symbol, mtf_state, acc,
                             lang=lang, smc_state=smc_state,
                             session_losses=_session_loss,
                             spread_pts=_spread,
                             feedback_block=_feedback_blk,
+                            fundamental_block=_fundamental_blk,
                         )
                         # Q4 — timestamp + guardar para feedback de apertura
                         ai_res["_ts"] = time.time()
@@ -247,7 +306,13 @@ with tab_dash:
                     _df_pos     = service.get_positions()
                     _reject     = None
 
-                    if not RiskManager.is_spread_ok(_spread, MAX_SPREAD_POINTS):
+                    if shield.get("blocking"):
+                        _reject = t["news_reject_shield"].format(
+                            event=shield.get("event_name", "?"),
+                            cur=shield.get("currency", "?"),
+                            n=shield.get("mins_away", "?"),
+                        )
+                    elif not RiskManager.is_spread_ok(_spread, MAX_SPREAD_POINTS):
                         _reject = t["reject_spread"].format(spread=_spread, max=MAX_SPREAD_POINTS)
                     elif RiskManager.is_daily_loss_limit_exceeded(
                         _history, acc.balance, MAX_DAILY_LOSS_PCT
@@ -315,6 +380,11 @@ with tab_dash:
                 st.info(t["press_analyze"])
         else:
             st.info(t["ai_disabled"])
+
+    st.divider()
+    # ── Panel de Noticias (expandible) ──────────────────────────────────────
+    with st.expander(t["news_calendar_title"], expanded=False):
+        render_news_panel(news_data, sentiment, t)
 
     st.divider()
     # ── Título + Botón Pánico ────────────────────────────────────────────────

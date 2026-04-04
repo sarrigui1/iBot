@@ -194,6 +194,43 @@ TRANSLATIONS = {
         "kz_active":           "⚡ ACTIVA",
         "kz_inactive":         "INACTIVA",
 
+        # News Shield
+        "news_shield_active":    "NEWS SHIELD: ACTIVO",
+        "news_shield_blocking":  "NEWS SHIELD: BLOQUEANDO",
+        "news_shield_no_key":    "NEWS SHIELD: SIN API KEY",
+        "news_shield_error":     "NEWS SHIELD: SIN DATOS",
+        "news_shield_premium":   "CALENDAR: PLAN PREMIUM",
+        "news_premium_calendar": "El calendario económico requiere plan Finnhub Premium. El bot opera normalmente con datos técnicos y noticias de texto.",
+        "news_blocked_reason":   "Noticia de alto impacto ({cur}) en {n} min: {event}",
+        "news_reject_shield":    "News Shield: {event} ({cur}) en {n} min",
+        "news_marquee_title":    "Noticias del Mercado",
+        "news_sentiment_title":  "Sentimiento del Mercado",
+        "news_no_key_warning":   "Agrega FINNHUB_API_KEY en .env para activar datos fundamentales.",
+        "news_api_error":        "API de noticias no disponible ({err}) — operando solo con datos técnicos.",
+        "news_no_events":        "Sin eventos de alto impacto hoy.",
+        "news_calendar_title":   "Calendario Economico Hoy",
+        "news_impact_high":      "ALTO",
+        "news_impact_med":       "MEDIO",
+        "news_impact_low":       "BAJO",
+        "news_buzz":             "Artículos esta semana",
+        "fundamental_block_hdr": "DATOS FUNDAMENTALES",
+
+        # Panel de aprendizaje AI (Feedback)
+        "feedback_title":        "🧠 Aprendizaje de la IA",
+        "feedback_no_data":      "Se necesitan mínimo {n} operaciones cerradas para activar el aprendizaje.",
+        "feedback_updated":      "Última actualización: {ts}",
+        "feedback_trades":       "Trades analizados",
+        "feedback_winrate":      "Win Rate real",
+        "feedback_avg_win":      "Ganancia media",
+        "feedback_avg_loss":     "Pérdida media",
+        "feedback_planned_rr":   "RR planeado",
+        "feedback_actual_rr":    "RR real obtenido",
+        "feedback_by_setup":     "Rendimiento por tipo de setup",
+        "feedback_by_session":   "Rendimiento por sesión",
+        "feedback_calibration":  "Notas de calibración automáticas (se inyectan en el próximo análisis)",
+        "feedback_refresh_btn":  "🔄 Recalcular aprendizaje",
+        "feedback_refreshed":    "Aprendizaje actualizado",
+
         # Instrucción de idioma para la IA
         "ai_lang_instruction": (
             "IMPORTANT: Write the 'logic_path' and 'reasoning' fields in Spanish (español)."
@@ -413,6 +450,43 @@ TRANSLATIONS = {
         "status_inactive":     "INACTIVE",
         "kz_active":           "⚡ ACTIVE",
         "kz_inactive":         "INACTIVE",
+
+        # News Shield
+        "news_shield_active":    "NEWS SHIELD: ACTIVE",
+        "news_shield_blocking":  "NEWS SHIELD: BLOCKING",
+        "news_shield_no_key":    "NEWS SHIELD: NO API KEY",
+        "news_shield_error":     "NEWS SHIELD: NO DATA",
+        "news_shield_premium":   "CALENDAR: PREMIUM PLAN",
+        "news_premium_calendar": "Economic calendar requires Finnhub Premium plan. Bot operates normally with technical data and text news.",
+        "news_blocked_reason":   "High-impact event ({cur}) in {n} min: {event}",
+        "news_reject_shield":    "News Shield: {event} ({cur}) in {n} min",
+        "news_marquee_title":    "Market News",
+        "news_sentiment_title":  "Market Sentiment",
+        "news_no_key_warning":   "Add FINNHUB_API_KEY to .env to enable fundamental data.",
+        "news_api_error":        "News API unavailable ({err}) — running on technical data only.",
+        "news_no_events":        "No high-impact events today.",
+        "news_calendar_title":   "Economic Calendar Today",
+        "news_impact_high":      "HIGH",
+        "news_impact_med":       "MEDIUM",
+        "news_impact_low":       "LOW",
+        "news_buzz":             "Articles this week",
+        "fundamental_block_hdr": "FUNDAMENTAL DATA",
+
+        # AI Learning Panel (Feedback)
+        "feedback_title":        "🧠 AI Learning",
+        "feedback_no_data":      "At least {n} closed trades are needed to activate learning.",
+        "feedback_updated":      "Last updated: {ts}",
+        "feedback_trades":       "Trades analyzed",
+        "feedback_winrate":      "Real win rate",
+        "feedback_avg_win":      "Avg win",
+        "feedback_avg_loss":     "Avg loss",
+        "feedback_planned_rr":   "Planned RR",
+        "feedback_actual_rr":    "Actual RR achieved",
+        "feedback_by_setup":     "Performance by setup type",
+        "feedback_by_session":   "Performance by session",
+        "feedback_calibration":  "Auto calibration notes (injected into next analysis)",
+        "feedback_refresh_btn":  "🔄 Recalculate learning",
+        "feedback_refreshed":    "Learning updated",
 
         # Language instruction for the AI
         "ai_lang_instruction": (

@@ -99,6 +99,7 @@ class AnthropicService:
         session_losses: int = 0,
         spread_pts: float = 0.0,
         feedback_block: str = "",
+        fundamental_block: str = "",
     ) -> dict:
         """
         Analiza el mercado con contexto multi-temporalidad y retorna una decisión JSON.
@@ -116,6 +117,7 @@ class AnthropicService:
             symbol, mtf_data, account_data, lang, smc_state,
             session_losses=session_losses, spread_pts=spread_pts,
             feedback_block=feedback_block,
+            fundamental_block=fundamental_block,
         )
         last_error_msg = "Error desconocido"
         raw_text = ""
@@ -182,6 +184,7 @@ class AnthropicService:
         session_losses: int = 0,
         spread_pts: float = 0.0,
         feedback_block: str = "",
+        fundamental_block: str = "",
     ) -> str:
         """Construye el mensaje con datos multi-TF + contexto SMC completo."""
         from i18n import get_translations
@@ -250,7 +253,8 @@ class AnthropicService:
                 f"  Setup     : {smc_state.get('setup','N/A')} — {smc_state.get('setup_details','')}"
             )
 
-        feedback_section = f"\n{feedback_block}\n" if feedback_block else ""
+        feedback_section     = f"\n{feedback_block}\n"     if feedback_block     else ""
+        fundamental_section  = f"\n{fundamental_block}\n"  if fundamental_block  else ""
 
         return (
             f"INSTRUMENT: {symbol}\n\n"
@@ -258,6 +262,7 @@ class AnthropicService:
             f"{smc_block}\n\n"
             f"{account}\n"
             f"{session_ctx}\n"
+            f"{fundamental_section}"
             f"{feedback_section}\n"
             f"{t['ai_lang_instruction']}\n\n"
             "Provide your institutional SMC trade decision as a JSON object."

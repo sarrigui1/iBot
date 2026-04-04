@@ -1,5 +1,5 @@
 """
-FeedbackService — Sistema de aprendizaje incremental para iBot.
+FeedbackService -Sistema de aprendizaje incremental para iBot.
 
 El modelo de IA (Claude) es stateless: no recuerda conversaciones anteriores.
 Este servicio compensa eso construyendo un bloque de contexto de rendimiento
@@ -7,13 +7,13 @@ histórico que se inyecta en cada prompt, permitiendo que la IA calibre su
 confianza basándose en qué condiciones han funcionado REALMENTE en el pasado.
 
 Flujo:
-  1. Al abrir una operación → log_trade_context(ticket, sesión, setup, confianza AI)
-  2. Al cerrar → update_memory()  (re-analiza todo el historial)
-  3. Antes de llamar a la IA → build_prompt_block()  (inject en el prompt)
+  1. Al abrir una operación -> log_trade_context(ticket, sesión, setup, confianza AI)
+  2. Al cerrar -> update_memory()  (re-analiza todo el historial)
+  3. Antes de llamar a la IA -> build_prompt_block()  (inject en el prompt)
 
 Archivos generados:
-  trade_context.csv    → contexto de cada trade al abrir (sesión, setup, confianza)
-  strategy_memory.json → estadísticas acumuladas de rendimiento
+  trade_context.csv    -> contexto de cada trade al abrir (sesión, setup, confianza)
+  strategy_memory.json -> estadísticas acumuladas de rendimiento
 """
 
 import json
@@ -142,7 +142,7 @@ class FeedbackService:
         else:
             avg_planned_rr = 0.0
 
-        # RR real: profit / (lot × pip_value × sl_pips) — aproximado como
+        # RR real: profit / (lot × pip_value × sl_pips) -aproximado como
         # profit / abs(avg_loss) para los que perdieron
         winners = merged[merged["profit"] > 0]["profit"]
         losers  = merged[merged["profit"] < 0]["profit"].abs()
@@ -201,10 +201,10 @@ class FeedbackService:
         streak_str = " ".join("W" if x > 0 else "L" for x in streak)
 
         lines = [
-            f"HISTORICAL PERFORMANCE ({n} closed trades — use to calibrate confidence):",
+            f"HISTORICAL PERFORMANCE ({n} closed trades -use to calibrate confidence):",
             f"  Overall win rate : {wr_pct}%  ({mem['total_wins']}/{n})",
             f"  Avg win / loss   : ${mem['avg_win']:+.2f} / ${mem['avg_loss']:.2f}",
-            f"  Planned RR 1:{mem['avg_planned_rr']}  →  Actual RR achieved 1:{mem['avg_actual_rr']}",
+            f"  Planned RR 1:{mem['avg_planned_rr']}  ->  Actual RR achieved 1:{mem['avg_actual_rr']}",
             f"  Recent 5 trades  : {streak_str}",
             "",
         ]
@@ -218,7 +218,7 @@ class FeedbackService:
                     continue
                 tag = cls._perf_tag(stats["win_rate"], mem["win_rate"])
                 lines.append(
-                    f"    {s:<12} → {stats['win_rate']*100:.0f}% "
+                    f"    {s:<12} -> {stats['win_rate']*100:.0f}% "
                     f"({stats['wins']}/{stats['n']} trades)  {tag}"
                 )
 
@@ -229,9 +229,9 @@ class FeedbackService:
             for s, stats in by_session.items():
                 if not s or s in ("nan", "OFF"):
                     continue
-                marker = " ← CURRENT" if s == session else ""
+                marker = " << CURRENT" if s == session else ""
                 lines.append(
-                    f"    {s:<8} → {stats['win_rate']*100:.0f}% "
+                    f"    {s:<8} -> {stats['win_rate']*100:.0f}% "
                     f"({stats['wins']}/{stats['n']} trades){marker}"
                 )
 
@@ -242,7 +242,7 @@ class FeedbackService:
             if sym_stats and sym_stats["n"] >= 3:
                 tag = cls._perf_tag(sym_stats["win_rate"], mem["win_rate"])
                 lines.append(
-                    f"  {symbol} specifically → "
+                    f"  {symbol} specifically -> "
                     f"{sym_stats['win_rate']*100:.0f}% win rate "
                     f"({sym_stats['wins']}/{sym_stats['n']} trades)  {tag}"
                 )
@@ -251,9 +251,9 @@ class FeedbackService:
         notes = mem.get("calibration_notes", [])
         if notes:
             lines.append("")
-            lines.append("  CALIBRATION NOTES (auto-derived — adjust your confidence accordingly):")
+            lines.append("  CALIBRATION NOTES (auto-derived -adjust your confidence accordingly):")
             for note in notes:
-                lines.append(f"    → {note}")
+                lines.append(f"    -> {note}")
 
         return "\n".join(lines)
 
@@ -322,14 +322,14 @@ class FeedbackService:
     def _perf_tag(wr: float, overall: float) -> str:
         delta = wr - overall
         if delta >= 0.15:
-            return "↑↑ STRONG"
+            return "++ STRONG"
         if delta >= 0.05:
-            return "↑ ABOVE AVG"
+            return "+ ABOVE AVG"
         if delta <= -0.15:
-            return "↓↓ AVOID"
+            return "-- AVOID"
         if delta <= -0.05:
-            return "↓ BELOW AVG"
-        return "≈ AVERAGE"
+            return "- BELOW AVG"
+        return "= AVERAGE"
 
     @staticmethod
     def _generate_calibration_notes(
@@ -353,12 +353,12 @@ class FeedbackService:
             delta = st["win_rate"] - overall_wr
             if delta >= 0.15:
                 notes.append(
-                    f"{s} setups outperform average by {delta*100:.0f}% — "
+                    f"{s} setups outperform average by {delta*100:.0f}% -"
                     f"increase confidence on {s} entries"
                 )
             elif delta <= -0.15:
                 notes.append(
-                    f"{s} setups underperform by {abs(delta)*100:.0f}% — "
+                    f"{s} setups underperform by {abs(delta)*100:.0f}% -"
                     f"reduce confidence and require additional confirmation on {s}"
                 )
 
@@ -371,7 +371,7 @@ class FeedbackService:
             if best[1]["win_rate"] - worst[1]["win_rate"] >= 0.10:
                 notes.append(
                     f"{best[0]} session outperforms {worst[0]} by "
-                    f"{(best[1]['win_rate'] - worst[1]['win_rate'])*100:.0f}% — "
+                    f"{(best[1]['win_rate'] - worst[1]['win_rate'])*100:.0f}% -"
                     f"be more conservative during {worst[0]}"
                 )
 
@@ -382,7 +382,7 @@ class FeedbackService:
             delta = st["win_rate"] - overall_wr
             if delta <= -0.15:
                 notes.append(
-                    f"{sym} win rate is {st['win_rate']*100:.0f}% (below average {overall_wr*100:.0f}%) — "
+                    f"{sym} win rate is {st['win_rate']*100:.0f}% (below average {overall_wr*100:.0f}%) -"
                     f"require stronger confirmation for {sym} trades"
                 )
 
@@ -391,12 +391,12 @@ class FeedbackService:
             rr_gap = avg_planned_rr - avg_actual_rr
             if rr_gap >= 0.5:
                 notes.append(
-                    f"Planned RR 1:{avg_planned_rr} vs actual 1:{avg_actual_rr} — "
+                    f"Planned RR 1:{avg_planned_rr} vs actual 1:{avg_actual_rr} -"
                     f"TPs are rarely fully hit; consider reducing TP targets by ~{rr_gap:.1f}R"
                 )
             elif rr_gap <= -0.3:
                 notes.append(
-                    f"Actual RR 1:{avg_actual_rr} exceeds planned 1:{avg_planned_rr} — "
+                    f"Actual RR 1:{avg_actual_rr} exceeds planned 1:{avg_planned_rr} -"
                     f"system is capturing more than planned; TP targets are well-calibrated"
                 )
 

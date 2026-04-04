@@ -13,6 +13,181 @@ def _utc_to_local_hhmm(utc_h: int, utc_m: int) -> str:
     return f"{total_mins // 60:02d}:{total_mins % 60:02d}"
 
 
+def render_news_marquee(news_data: dict, sentiment: dict, t: dict):
+    """
+    Fila superior con:
+    - Badge de News Shield (verde / rojo / gris)
+    - Sentimiento del mercado
+    - Últimas noticias en texto compacto
+    - Alerta si no hay API key o si hay error
+
+    Args:
+        news_data:  resultado de NewsService.get_economic_calendar()
+        sentiment:  resultado de NewsService.get_market_sentiment()
+        t:          traducciones
+    """
+    shield     = news_data.get("_shield", {})
+    blocking   = shield.get("blocking", False)
+    cal_error  = news_data.get("error")
+    # Sentimiento: NO_API_KEY solo aplica a Finnhub (no al calendario FF)
+    no_finnhub = sentiment.get("error") == "NO_API_KEY"
+
+    # ── Badge de estado ───────────────────────────────────────────────────────
+    if cal_error:
+        badge_color = "#6c757d"
+        badge_label = t["news_shield_error"]
+    elif blocking:
+        badge_color = "#dc3545"
+        badge_label = t["news_shield_blocking"]
+    else:
+        badge_color = "#28a745"
+        badge_label = t["news_shield_active"]
+
+    col_badge, col_sent, col_news = st.columns([1.5, 1.5, 5])
+
+    # Badge
+    col_badge.markdown(
+        f"""<div style="border:2px solid {badge_color};border-radius:6px;
+                        padding:6px 10px;background:{badge_color}18;
+                        text-align:center;">
+              <span style="color:{badge_color};font-weight:bold;font-size:0.8rem;">
+                {badge_label}
+              </span>
+            </div>""",
+        unsafe_allow_html=True,
+    )
+
+    # Sentimiento
+    sent_error = sentiment.get("error")
+    if no_finnhub:
+        col_sent.caption(t["news_no_key_warning"])
+    elif sent_error:
+        col_sent.caption(f"Sentiment: N/A")
+    else:
+        label = sentiment.get("label", "NEUTRAL")
+        bull  = sentiment.get("bullish_pct", 0.33)
+        bear  = sentiment.get("bearish_pct", 0.33)
+        s_color = "#28a745" if label == "BULLISH" else "#dc3545" if label == "BEARISH" else "#aaa"
+        col_sent.markdown(
+            f"""<div style="text-align:center;">
+                  <small style="color:#aaa;">{t['news_sentiment_title']}</small><br>
+                  <span style="color:{s_color};font-weight:bold;">{label}</span>
+                  <small style="color:#888;"> {bull*100:.0f}% / {bear*100:.0f}%</small>
+                </div>""",
+            unsafe_allow_html=True,
+        )
+
+    # Noticias recientes
+    recent = news_data.get("_recent_news", [])
+    if recent:
+        headlines = "  |  ".join(
+            f"[{n['source']}] {n['headline'][:80]}"
+            for n in recent[:4]
+        )
+        col_news.markdown(
+            f"<small style='color:#888;'>{headlines}</small>",
+            unsafe_allow_html=True,
+        )
+    else:
+        col_news.caption(t["news_no_events"])
+
+    # Banner de bloqueo si shield está activo
+    if blocking:
+        st.error(
+            f"🚫 {t['news_shield_blocking']} — "
+            f"{t['news_blocked_reason'].format(cur=shield['currency'], n=shield['mins_away'], event=shield['event_name'])}"
+        )
+
+
+def render_news_panel(news_data: dict, sentiment: dict, t: dict):
+    """
+    Panel expandible con calendario económico del día + gráfico de sentimiento.
+    Se usa dentro del tab Dashboard o de una pestaña dedicada.
+    """
+    cal_error = news_data.get("error")
+
+    if cal_error:
+        st.warning(t["news_api_error"].format(err=cal_error))
+
+    col_cal, col_sent = st.columns([3, 1])
+
+    # ── Calendario ────────────────────────────────────────────────────────────
+    with col_cal:
+        st.markdown(f"**{t['news_calendar_title']}**")
+        events = news_data.get("events", [])
+        if not events:
+            st.caption(t["news_no_events"])
+        else:
+            impact_colors = {3: "#dc3545", 2: "#ffc107", 1: "#6c757d"}
+            impact_labels = {
+                3: t["news_impact_high"],
+                2: t["news_impact_med"],
+                1: t["news_impact_low"],
+            }
+            for ev in sorted(events, key=lambda x: x.get("mins_away", 999)):
+                imp    = ev.get("impact", 1)
+                color  = impact_colors.get(imp, "#6c757d")
+                label  = impact_labels.get(imp, "")
+                mins   = ev.get("mins_away", 999)
+                timing = f"en {mins} min" if 0 <= mins <= 240 else (
+                    f"hace {abs(mins)} min" if mins < 0 else ev.get("time", "")
+                )
+                actual   = f"  A:{ev['actual']}"   if ev.get("actual")   else ""
+                estimate = f"  E:{ev['estimate']}" if ev.get("estimate") else ""
+                prev     = f"  P:{ev['prev']}"     if ev.get("prev")     else ""
+                st.markdown(
+                    f"""<div style="border-left:3px solid {color};padding:4px 10px;
+                                    margin:3px 0;background:{color}0d;border-radius:0 4px 4px 0;">
+                          <span style="color:{color};font-size:0.75rem;font-weight:bold;">
+                            [{label}] {ev.get('currency','')}
+                          </span>
+                          <span style="color:#ccc;font-size:0.85rem;">
+                            {ev.get('event','')[:60]}
+                          </span>
+                          <span style="color:#888;font-size:0.75rem;float:right;">
+                            {timing}{actual}{estimate}{prev}
+                          </span>
+                        </div>""",
+                    unsafe_allow_html=True,
+                )
+
+    # ── Sentimiento ───────────────────────────────────────────────────────────
+    with col_sent:
+        st.markdown(f"**{t['news_sentiment_title']}**")
+        sent_error = sentiment.get("error")
+        if sent_error:
+            st.caption(f"N/A ({sent_error})")
+        else:
+            bull = sentiment.get("bullish_pct", 0.33)
+            bear = sentiment.get("bearish_pct", 0.33)
+            neut = sentiment.get("neutral_pct", 0.34)
+            buzz = sentiment.get("buzz", 0)
+            label = sentiment.get("label", "NEUTRAL")
+            s_color = "#28a745" if label == "BULLISH" else "#dc3545" if label == "BEARISH" else "#aaa"
+
+            st.markdown(
+                f"""<div style="text-align:center;padding:8px;">
+                      <div style="font-size:1.3rem;font-weight:bold;color:{s_color};">
+                        {label}
+                      </div>
+                      <div style="margin:6px 0;">
+                        <div style="background:#333;border-radius:4px;height:8px;margin:2px 0;">
+                          <div style="background:#28a745;width:{bull*100:.0f}%;height:8px;border-radius:4px;"></div>
+                        </div>
+                        <small style="color:#28a745;">Bull {bull*100:.0f}%</small>
+                      </div>
+                      <div style="margin:4px 0;">
+                        <div style="background:#333;border-radius:4px;height:8px;margin:2px 0;">
+                          <div style="background:#dc3545;width:{bear*100:.0f}%;height:8px;border-radius:4px;"></div>
+                        </div>
+                        <small style="color:#dc3545;">Bear {bear*100:.0f}%</small>
+                      </div>
+                      <small style="color:#666;">{t['news_buzz']}: {buzz}</small>
+                    </div>""",
+                unsafe_allow_html=True,
+            )
+
+
 def render_market_semaphore(
     smc_state: dict,
     mtf_state: dict,

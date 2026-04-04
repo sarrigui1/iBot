@@ -36,3 +36,22 @@ ORDER_DEVIATION = 20                     # slippage máximo aceptado (puntos)
 # ── Control de llamadas a la IA ──────────────────────────────────────────────
 AI_MIN_INTERVAL_MINS = 5    # minutos mínimos entre análisis (configurable en sidebar)
 AI_STALE_MINS        = 15   # minutos tras los cuales el análisis se considera obsoleto
+
+# ── News Shield ──────────────────────────────────────────────────────────────
+NEWS_SHIELD_MINUTES   = 60    # bloquear si hay noticia high-impact en los próximos N min
+NEWS_CACHE_TTL        = 1800  # segundos que se cachean los datos de noticias (30 min)
+NEWS_SENTIMENT_CACHE  = 1800  # segundos para cachear sentimiento (30 min)
+
+# Monedas que componen cada símbolo (para filtrar noticias relevantes)
+SYMBOL_CURRENCIES = {
+    "EURUSD": ["EUR", "USD"],
+    "GBPUSD": ["GBP", "USD"],
+    "USDJPY": ["USD", "JPY"],
+    "XAUUSD": ["USD"],          # Oro cotiza en USD
+    "BTCUSD": ["USD"],          # Bitcoin cotiza en USD
+    "GBPJPY": ["GBP", "JPY"],
+    "AUDUSD": ["AUD", "USD"],
+    "USDCAD": ["USD", "CAD"],
+    "USDCHF": ["USD", "CHF"],
+    "NZDUSD": ["NZD", "USD"],
+}
