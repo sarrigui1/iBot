@@ -1,30 +1,50 @@
 import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime, timezone, timedelta
-from config import LOGIN, PASSWORD, SERVER, MAGIC_NUMBER, ORDER_DEVIATION, BROKER_UTC_OFFSET, LOCAL_UTC_OFFSET
+from config import MAGIC_NUMBER, ORDER_DEVIATION, BROKER_UTC_OFFSET, LOCAL_UTC_OFFSET
 from logger_service import LoggerService
 
 class MT5Service:
-    @staticmethod
-    def connect():
-        if not mt5.initialize(login=LOGIN, password=PASSWORD, server=SERVER):
+    def __init__(self, config=None):
+        """
+        Inicializa MT5Service.
+
+        Args:
+            config: ConfigLoader instance (para distribución comercial).
+                   Si es None, usa valores de config.py.
+        """
+        self.config = config
+        if config is not None:
+            self.login = config.mt5_login
+            self.password = config.mt5_password
+            self.server = config.mt5_server
+            self.broker_utc_offset = config.broker_utc_offset
+            self.local_utc_offset = config.local_utc_offset
+        else:
+            # Para desarrollo: importar desde config.py
+            from config import LOGIN, PASSWORD, SERVER
+            self.login = LOGIN
+            self.password = PASSWORD
+            self.server = SERVER
+            self.broker_utc_offset = BROKER_UTC_OFFSET
+            self.local_utc_offset = LOCAL_UTC_OFFSET
+
+    def connect(self):
+        if not mt5.initialize(login=self.login, password=self.password, server=self.server):
             return False, mt5.last_error()
         return True, "Conectado"
 
-    @staticmethod
-    def get_account():
+    def get_account(self):
         return mt5.account_info()
 
-    @staticmethod
-    def get_positions():
+    def get_positions(self):
         positions = mt5.positions_get()
         if not positions: return pd.DataFrame()
         df = pd.DataFrame(list(positions), columns=positions[0]._asdict().keys())
         df['type_name'] = df['type'].apply(lambda x: 'BUY' if x == 0 else 'SELL')
         return df
 
-    @staticmethod
-    def get_times() -> dict:
+    def get_times(self) -> dict:
         """
         Retorna las tres horas relevantes para el bot:
           - utc_dt    : hora UTC real del sistema operativo (siempre correcta)
@@ -36,8 +56,8 @@ class MT5Service:
         no UTC puro — no es fiable para cálculos de zona horaria.
         """
         utc_dt    = datetime.now(timezone.utc)
-        broker_dt = utc_dt + timedelta(hours=BROKER_UTC_OFFSET)
-        local_dt  = utc_dt + timedelta(hours=LOCAL_UTC_OFFSET)
+        broker_dt = utc_dt + timedelta(hours=self.broker_utc_offset)
+        local_dt  = utc_dt + timedelta(hours=self.local_utc_offset)
 
         return {
             "utc":    utc_dt,
@@ -45,8 +65,7 @@ class MT5Service:
             "local":  local_dt,
         }
 
-    @staticmethod
-    def get_spread(symbol: str) -> float:
+    def get_spread(self, symbol: str) -> float:
         """Retorna el spread actual en puntos (entero). 0.0 si no disponible."""
         tick = mt5.symbol_info_tick(symbol)
         info = mt5.symbol_info(symbol)
@@ -54,8 +73,7 @@ class MT5Service:
             return 0.0
         return round((tick.ask - tick.bid) / info.point, 1)
 
-    @staticmethod
-    def get_pip_value_per_lot(symbol: str) -> float:
+    def get_pip_value_per_lot(self, symbol: str) -> float:
         """
         Retorna el valor USD por pip por lote estándar para el símbolo dado.
         Fórmula: tick_value / tick_size × pip_size
@@ -69,8 +87,7 @@ class MT5Service:
             return 10.0
         return round((info.trade_tick_value / info.trade_tick_size) * pip_size, 4)
 
-    @staticmethod
-    def send_order(symbol, action, lot, sl_pips, tp_pips):
+    def send_order(self, symbol, action, lot, sl_pips, tp_pips):
         mt5.symbol_select(symbol, True)
         tick = mt5.symbol_info_tick(symbol)
         point = mt5.symbol_info(symbol).point
@@ -96,8 +113,7 @@ class MT5Service:
         LoggerService.log_event(res.order, symbol, action, lot, price, status, res.comment)
         return res
 
-    @staticmethod
-    def modify_sl(ticket: int, new_sl: float):
+    def modify_sl(self, ticket: int, new_sl: float):
         """
         Modifica el Stop Loss de una posición abierta sin tocar el TP.
         Usa TRADE_ACTION_SLTP que solo actualiza niveles sin re-ejecutar.
@@ -115,8 +131,7 @@ class MT5Service:
         }
         return mt5.order_send(request)
 
-    @staticmethod
-    def get_h1_atr(symbol: str) -> float:
+    def get_h1_atr(self, symbol: str) -> float:
         """ATR(14) de H1 para cálculo de trailing stop dinámico."""
         import pandas_ta as ta
         rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 20)
@@ -127,8 +142,7 @@ class MT5Service:
         val = df["ATRr_14"].iloc[-2]
         return float(val) if pd.notna(val) else 0.0
 
-    @staticmethod
-    def close_position(ticket):
+    def close_position(self, ticket):
         pos_list = mt5.positions_get(ticket=int(ticket))
         if not pos_list:
             return None

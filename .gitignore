@@ -3,3 +3,16 @@
 __pycache__/
 *.csv
 .dev/
+
+# Fase 1: Credenciales locales (NO distribuir)
+credentials.py
+
+# Fase 1: Configuración cliente (NO trackear)
+config.ini
+
+# Fase 1: Caché de validación de licencia
+data/license_cache.json
+
+# Fase 2: Artifacts de compilación
+build/
+dist/

@@ -24,6 +24,16 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
+# --- CONFIGURACIÓN INYECTADA (Fase 1) ---
+# Para desarrollo: None (usa variables de entorno)
+# Para producción: ConfigLoader instance (inyectada desde app.py)
+_config = None
+
+def set_config(config):
+    """Inyecta ConfigLoader para acceso a credenciales en producción."""
+    global _config
+    _config = config
+
 _FINNHUB_BASE = "https://finnhub.io/api/v1"
 _FF_CALENDAR  = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 _TIMEOUT      = 8   # segundos máximos por request

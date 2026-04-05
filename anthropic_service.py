@@ -10,9 +10,11 @@ import anthropic
 import json
 import os
 import time
-from dotenv import load_dotenv
 
-load_dotenv(override=True)  # override=True: sobreescribe vars de entorno vacías del sistema
+# La configuración ahora se inyecta desde app.py (ConfigLoader)
+# Las credenciales pueden venir de:
+# 1. Variables de entorno (para desarrollo local)
+# 2. Parámetro config (para distribución comercial)
 
 # JSON schema que la IA DEBE respetar (se inyecta en el system prompt)
 _RESPONSE_SCHEMA = """{
@@ -86,8 +88,30 @@ class AnthropicService:
     TIMEOUT_RETRIES = 2
     RETRY_DELAY = 2  # segundos entre reintentos
 
-    def __init__(self):
-        self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    def __init__(self, config=None):
+        """
+        Inicializa AnthropicService.
+
+        Args:
+            config: ConfigLoader instance (para distribución comercial).
+                   Si es None, intenta obtener la API key de variables de entorno.
+        """
+        # Obtener API key desde config o variables de entorno
+        if config is not None:
+            # En producción: la API key NO va en config.ini
+            # Se inyectaría de otro lado (variables de entorno del sistema)
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+        else:
+            # Para desarrollo: leer de variables de entorno
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+
+        if not api_key:
+            raise ValueError(
+                "ANTHROPIC_API_KEY no configurada. "
+                "Define la variable de entorno ANTHROPIC_API_KEY"
+            )
+
+        self.client = anthropic.Anthropic(api_key=api_key)
 
     def get_strategy_decision(
         self,

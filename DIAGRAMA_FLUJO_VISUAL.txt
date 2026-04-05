@@ -1,0 +1,449 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║            FLUJO COMPLETO: DE DASHBOARD A ORDEN MT5                            ║
+║                    iBot · Intelligence Trading v1.0                            ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+
+                     ┌─────────────────────────────────┐
+                     │  TRADER EN DASHBOARD STREAMLIT  │
+                     │                                 │
+                     │  ┌───────────────────────────┐  │
+                     │  │ [🧠 ANALIZAR CON CLAUDE]  │  │ ← PRESIONA AQUÍ
+                     │  └───────────────────────────┘  │
+                     └────────────────┬────────────────┘
+                                      │
+                                      ▼
+                    ┌──────────────────────────────────┐
+                    │ VALIDACIÓN 0: ¿Condiciones OK?  │
+                    ├──────────────────────────────────┤
+                    │ • ¿Pasaron ≥5 min último análisis? │
+                    │ • ¿Símbolo válido en config?      │
+                    │ • ¿MT5 conectado?                 │
+                    │ • ¿Token de caché diferente?      │
+                    └────────────┬─────────────────────┘
+                                 │
+                    ┌────────────┴──────────┬──────────┐
+                    │                       │          │
+                   SÍ                       │         NO
+                    │                       │          │
+                    ▼                       ▼          │
+          ✓ CONTINUAR          ❌ MOSTRAR ERROR    ESPERAR
+                                                    5 MIN
+                    │
+                    ▼
+        ┌───────────────────────────────────────┐
+        │ RECOPILACIÓN: 12 BLOQUES DE DATOS     │
+        │ (PARALELO — sin bloqueos)             │
+        ├───────────────────────────────────────┤
+        │ 1. INSTRUMENT (símbolo)               │
+        │ 2. D1 MACRO (precio, EMA200, RSI)    │
+        │ 3. H1 TECHNICAL (tendencia H1)        │
+        │ 4. M15 ENTRY (momentum M15)           │
+        │ 5. SMC CONTEXT (OB, FVG, BOS, etc)   │
+        │ 6. ACCOUNT (equity, balance, P&L)     │
+        │ 7. SESSION (hora, kill zone, losses)  │
+        │ 8. FUNDAMENTAL (noticias, sentiment)  │
+        │ 9. HISTORICAL PERF (aprendizaje)      │
+        │ 10. ACCOUNT RESTRICTIONS (límites)    │
+        │ 11. RISK PARAMS (SL, TP, lote)        │
+        │ 12. LANGUAGE & RULES                  │
+        └────────┬───────────────────────────────┘
+                 │
+                 ▼
+        ┌───────────────────────────────────────┐
+        │ VALIDACIÓN DATOS: ¿Son lógicos?       │
+        ├───────────────────────────────────────┤
+        │ • EMA200 ≠ NaN  →  si NaN, usar Close │
+        │ • RSI ∈ [0, 100] → forzar rango       │
+        │ • ATR > 0       → default si ≤ 0      │
+        │ • Spread normal → usar promedio       │
+        │ • Equity > 0    → ERROR si ≤ 0        │
+        │ • Bid < Ask     → chequear estructura │
+        └────────┬──────────────────┬───────────┘
+                 │                  │
+            TODOS OK         ALGUNO FALLA
+                 │                  │
+                 ▼                  ▼
+        CONTINUAR        ❌ MOSTRAR ERROR
+                             SIN ENVIAR A CLAUDE
+                 │
+                 ▼
+        ┌───────────────────────────────────────┐
+        │ CONSTRUCCIÓN DEL PROMPT FINAL         │
+        │ (concatenar 12 bloques en 1 string)   │
+        ├───────────────────────────────────────┤
+        │ Tamaño: ~2,500 caracteres             │
+        │ Tokens: ~600–700                      │
+        │ Tiempo: < 100ms                       │
+        └────────┬───────────────────────────────┘
+                 │
+                 ▼
+        ┌───────────────────────────────────────┐
+        │ ENVÍO A CLAUDE HAIKU 4.5              │
+        │ (vía Anthropic API)                   │
+        ├───────────────────────────────────────┤
+        │ • Prefill: "{" ← fuerza JSON          │
+        │ • Max tokens: 500                     │
+        │ • Timeout: 8 segundos                 │
+        │ • Retries: 2 intentos si falla        │
+        └────────┬───────────────────────────────┘
+                 │
+        ┌────────┴──────────────────┬─────────┐
+        │                           │         │
+      OK                      TIMEOUT      ERROR
+        │                           │         │
+        ▼                           ▼         ▼
+    JSON       ❌ MOSTRAR  ❌ MOSTRAR
+   RESPONSE       TIMEOUT      ERROR
+        │         + HOLD       + HOLD
+        │
+        ▼
+    ┌───────────────────────────────────────┐
+    │ PARSEO Y VALIDACIÓN JSON              │
+    ├───────────────────────────────────────┤
+    │ decision ∈ {BUY, SELL, HOLD}?         │
+    │   SÍ → usar valor                     │
+    │   NO → forzar HOLD                    │
+    │                                       │
+    │ confidence ∈ [0.0, 1.0]?              │
+    │   SÍ → usar valor                     │
+    │   NO → clamp a rango [0, 1]           │
+    │                                       │
+    │ sl_pips > 0?                          │
+    │   SÍ → usar valor                     │
+    │   NO → forzar HOLD                    │
+    │                                       │
+    │ tp_pips > 0?                          │
+    │   SÍ → usar valor                     │
+    │   NO → forzar HOLD                    │
+    └────────┬───────────────────────────────┘
+             │
+             ▼
+    ┌──────────────────────────┐
+    │ decision == "HOLD"?       │
+    │    /            \         │
+    │   SÍ            NO        │
+    │    │     (BUY o SELL)     │
+    │    │            │         │
+    │    ▼            ▼         │
+    │  MOSTRAR    confidence    │
+    │  RESULTADO   >= 0.85?     │
+    │   (FINAL)    /       \    │
+    │             SÍ       NO   │
+    │             │        │    │
+    │ ┌───────────┘        │    │
+    │ │          ┌─────────┘    │
+    │ │          │              │
+    │ ▼          ▼              │
+    │ AUTÓNOMO  MANUAL         │
+    │ (sin      (con botón      │
+    │  botón)   "Ejecutar")     │
+    └────┬──────────┬───────────┘
+         │          │
+         ▼          ▼
+    ┌─────────────────────────────────┐
+    │ EVALUACIÓN: 6 SAFETY GATES      │
+    │ (Si automático, evalúan)        │
+    │ (Si manual, se evalúan igual)   │
+    ├─────────────────────────────────┤
+    │                                 │
+    │ ┌─ GATE 1: NEWS SHIELD          │
+    │ │  ¿Hay Carpeta Roja en 60 min?│
+    │ │  blocking == True?            │
+    │ │  └─ SÍ → RECHAZAR ❌          │
+    │ │     NO → siguiente            │
+    │ │                               │
+    │ ┌─ GATE 2: SPREAD FILTER        │
+    │ │  ¿Spread > 30 pts?            │
+    │ │  └─ SÍ → RECHAZAR ❌          │
+    │ │     NO → siguiente            │
+    │ │                               │
+    │ ┌─ GATE 3: DAILY LOSS LIMIT     │
+    │ │  ¿Pérdidas + riesgo > 3%?     │
+    │ │  └─ SÍ → RECHAZAR ❌          │
+    │ │     NO → siguiente            │
+    │ │                               │
+    │ ┌─ GATE 4: DUPLICATE POSITION   │
+    │ │  ¿Ya hay BUY/SELL abierto?    │
+    │ │  └─ SÍ → RECHAZAR ❌          │
+    │ │     NO → siguiente            │
+    │ │                               │
+    │ ┌─ GATE 5: SL GUARD             │
+    │ │  ¿SL > 0?                     │
+    │ │  └─ NO → RECHAZAR ❌          │
+    │ │     SÍ → siguiente            │
+    │ │                               │
+    │ ┌─ GATE 6: (confidence)         │
+    │ │  (ya validado arriba)         │
+    │ │  └─ solo info, no rechaza     │
+    │                                 │
+    └────┬────────────────────────────┘
+         │
+   ┌─────┴────────┬───────────┐
+   │              │           │
+ ALGUNO      TODOS PASAN    NO (manual)
+  FALLA       (autónomo)
+   │              │           │
+   ▼              ▼           ▼
+RECHAZAR    CALCULAR     ESPERAR
++ LOG       LOTE         CONFIRMACIÓN
+❌          (1% risk)    DEL TRADER
+           │
+           ▼
+        ┌──────────────────────────┐
+        │ CÁLCULO DE LOTE          │
+        ├──────────────────────────┤
+        │ Lote = (Equity × 1%)     │
+        │   / (SL_pips × pip_val)  │
+        │ Lote = Lote × position   │
+        │   _size (0.0–1.0)        │
+        │ Lote ∈ [0.01, 2.0]       │
+        │ (clamped a rango min/max)│
+        └────────┬─────────────────┘
+                 │
+                 ▼
+        ┌──────────────────────────┐
+        │ ENVÍO A MT5: send_order()│
+        ├──────────────────────────┤
+        │ • symbol: EURUSD         │
+        │ • action: BUY / SELL     │
+        │ • volume: 0.25 lotes     │
+        │ • sl: price - SL_pips    │
+        │ • tp: price + TP_pips    │
+        │ • deviation: 20 pts      │
+        └────────┬─────────────────┘
+                 │
+        ┌────────┴─────────────────┐
+        │                          │
+      OK                        ERROR
+        │                          │
+        ▼                          ▼
+    retcode                ❌ st.error()
+    == 10009?              "MT5 no
+        │                   respondió"
+    ┌───┴────┐               │
+   SÍ        NO              RETURN
+    │         │              (FIN)
+    ▼         ▼
+  ✅      ❌ st.error()
+ SUCCESS  "Order Error:
+  │       [comment]"
+  │         │
+  │       RETURN
+  │       (FIN)
+  │
+  ▼
+┌──────────────────────────────┐
+│ FEEDBACK SERVICE             │
+│ log_trade_context()          │
+├──────────────────────────────┤
+│ Guardar:                     │
+│ • ticket (orden MT5)         │
+│ • symbol, direction          │
+│ • setup SMC detectado        │
+│ • sesión actual              │
+│ • respuesta de Claude        │
+│ (para aprendizaje posterior) │
+└────────┬─────────────────────┘
+         │
+         ▼
+┌──────────────────────────────┐
+│ ACTUALIZAR DASHBOARD         │
+├──────────────────────────────┤
+│ st.toast("✅ BUY 0.25 EURUSD")│
+│ st.rerun() ← recargar        │
+│ Mostrar nuevo orden en tabla │
+│ Actualizar P&L              │
+└────────┬─────────────────────┘
+         │
+         ▼
+┌──────────────────────────────┐
+│ REGISTRO EN CSV              │
+│ trading_decisions.csv        │
+├──────────────────────────────┤
+│ 2026-04-03 10:15:30,         │
+│ EURUSD,BUY,0.87,18,40,1,     │
+│ (accepted=1, sin rechazo)    │
+└────────┬─────────────────────┘
+         │
+         ▼
+         FIN ✓
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ESCENARIOS DE RECHAZO:
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ CASO 1: RECHAZADO EN GATE 1 (News Shield)                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Claude → {"decision": "BUY", "confidence": 0.87, ...}                      │
+│                        │                                                     │
+│                        ▼                                                     │
+│           GATE 1: News Shield Check                                         │
+│           ¿event high-impact en 60 min?                                     │
+│           └─ SÍ: BoE Rate Decision en 5 min                                │
+│                                                                              │
+│           ❌ RECHAZAR                                                        │
+│           st.error("🚫 News Shield: BoE (GBP) en 5 min")                    │
+│                                                                              │
+│           LOG: "2026-04-03 08:25:45,GBPUSD,BUY,0.87,25,60,0,               │
+│                  News Shield: BoE in 5 min"                                │
+│                                                                              │
+│  Resultado: Operación bloqueada, protección de capital contra macro        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ CASO 2: RECHAZADO EN GATE 3 (Daily Loss Limit)                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Claude → {"decision": "BUY", "confidence": 0.90, ...}                      │
+│  GATE 1 ✓, GATE 2 ✓                                                         │
+│                        │                                                     │
+│                        ▼                                                     │
+│           GATE 3: Daily Loss Limit                                          │
+│           Pérdidas hoy: -$140 = -2.7%                                      │
+│           Riesgo de esta operación: 1% = $52                               │
+│           Total sería: -2.7% - 1% = -3.7% > -3% LÍMITE                    │
+│                                                                              │
+│           ❌ RECHAZAR                                                        │
+│           st.error("🚫 Daily Loss: 2.7% + 1% risk = 3.7% > 3% limit")     │
+│                                                                              │
+│           LOG: "2026-04-03 14:45:20,BTCUSD,BUY,0.90,100,250,0,            │
+│                  Daily Loss Limit exceeded"                                │
+│                                                                              │
+│  Resultado: Operador debe esperar al próximo día o cerrar ganador          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ CASO 3: CONFIANZA BAJA → REQUIERE CONFIRMACIÓN MANUAL                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Claude → {"decision": "BUY", "confidence": 0.74, ...}                      │
+│           confidence 0.74 < threshold 0.85                                  │
+│                                                                              │
+│  ❌ NO AUTÓNOMO (pero SÍ permitido manual)                                  │
+│                                                                              │
+│  Dashboard muestra:                                                         │
+│  ┌─────────────────────────────────┐                                       │
+│  │ 🤖 Veredicto de Claude          │                                       │
+│  │ Decisión: BUY                   │                                       │
+│  │ Confianza: 74%                  │                                       │
+│  │ SL: 20 pips | TP: 45 pips       │                                       │
+│  │ R:R: 2.25                       │                                       │
+│  │                                 │                                       │
+│  │ [Ejecutar BUY — 0.20 lotes]     │ ← BOTÓN MANUAL (no auto)              │
+│  └─────────────────────────────────┘                                       │
+│                                                                              │
+│  Si operador presiona → pasa TODOS los Gates → orden enviada                │
+│  Si operador no presiona → nada sucede                                      │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+VALIDACIONES PRE-CLAUDE (impide datos inválidos):
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ VALIDACIÓN DE INDICADORES                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Dato       Validación                         Si Falla                      │
+│  ────────   ──────────────────────────────    ─────────────────────────     │
+│  EMA200     ≠ NaN, > 0                        Usar Close como fallback      │
+│  EMA20      ≠ NaN, > 0                        Usar Close como fallback      │
+│  EMA50      ≠ NaN, > 0                        Usar Close como fallback      │
+│  EMA9       ≠ NaN, > 0                        Usar Close como fallback      │
+│  RSI        ∈ [0, 100]                        Clamp a rango [0, 100]        │
+│  ATR        > 0                               Default 0.0001 si ≤ 0         │
+│  Price      bid > 0, ask > bid                ERROR: símbolo inválido       │
+│  Spread     ≥ 0, < 100 pts normal             Usar promedio 5 muestras      │
+│                                                                              │
+│  Si CUALQUIERA de éstas falla → st.error() y NO enviar a Claude           │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+FLUJO RESUMIDO DE TOMA DE DECISIONES:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│    USUARIO PRESIONA                                                         │
+│         │                                                                   │
+│         ▼                                                                   │
+│    ¿CONDICIONES OK?  ──NO──> ERROR + STOP                                 │
+│         │ SÍ                                                                │
+│         ▼                                                                   │
+│    RECOPILACIÓN 12 BLOQUES                                                 │
+│         │                                                                   │
+│         ▼                                                                   │
+│    ¿DATOS VÁLIDOS?  ──NO──> ERROR + STOP                                  │
+│         │ SÍ                                                                │
+│         ▼                                                                   │
+│    ENVÍO A CLAUDE                                                          │
+│         │                                                                   │
+│         ▼                                                                   │
+│    ¿RESPUESTA JSON?  ──NO──> RETRY 2 veces, si falla HOLD                │
+│         │ SÍ                                                                │
+│         ▼                                                                   │
+│    ¿decision = HOLD?  ──SÍ──> MOSTRAR RESULTADO (FIN)                    │
+│         │ NO                                                                │
+│         ▼                                                                   │
+│    ¿confidence ≥ 0.85?  ──NO──> SOLO MANUAL (mostrar botón)               │
+│         │ SÍ                                                                │
+│         ▼                                                                   │
+│    ¿AUTÓNOMO ON?  ──NO──> SOLO MANUAL (mostrar botón)                    │
+│         │ SÍ                                                                │
+│         ▼                                                                   │
+│    EVALUAR 6 SAFETY GATES                                                   │
+│         │                                                                   │
+│         ├─ GATE 1: News Shield ──FALLA──> RECHAZAR ❌                     │
+│         │  PASA │                                                          │
+│         │       ├─ GATE 2: Spread ──FALLA──> RECHAZAR ❌                  │
+│         │       │  PASA │                                                  │
+│         │       │       ├─ GATE 3: Daily Loss ──FALLA──> RECHAZAR ❌      │
+│         │       │       │  PASA │                                          │
+│         │       │       │       ├─ GATE 4: Duplicate ──FALLA──> RECHAZAR ❌│
+│         │       │       │       │  PASA │                                  │
+│         │       │       │       │       ├─ GATE 5: SL ──FALLA──> RECHAZAR ❌
+│         │       │       │       │       │  PASA │                          │
+│         │       │       │       │       │       ▼                          │
+│         │       │       │       │       │  TODOS PASAN                     │
+│         │       │       │       │       │       │                          │
+│         │       │       │       │       │       ▼                          │
+│         │       │       │       │       │  ENVIAR ORDEN MT5               │
+│         │       │       │       │       │       │                          │
+│         │       │       │       │       │       ▼                          │
+│         │       │       │       │       │  ¿Retcode 10009?               │
+│         │       │       │       │       │  /            \                 │
+│         │       │       │       │       │ SÍ            NO                │
+│         │       │       │       │       │  │             │                │
+│         │       │       │       │       │  ▼             ▼                │
+│         │       │       │       │       │ ✅ ÉXITO    ❌ ERROR           │
+│         │       │       │       │       │              "MT5 error"        │
+│         │       │       │       │       │                                 │
+│         │       │       │       │       └────┬─────────┘                  │
+│         │       │       │       │            │                            │
+│         │       │       │       └────────────┤                            │
+│         │       │       └──────────────────┤                              │
+│         │       │                          │                              │
+│         │       │                          ▼                              │
+│         │       │                     LOG EN CSV                          │
+│         │       │                     FEEDBACK SERVICE                    │
+│         │       │                     UPDATE DASHBOARD                    │
+│         │       │                     RERUN                               │
+│         │       │                                                          │
+│         └───────┴──────────────────────┘                                   │
+│                                        │                                   │
+│                                        ▼                                   │
+│                              MOSTRAR RESULTADO                             │
+│                              FIN ✓                                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+Fin del diagrama — para más detalles ver FLUJO_ANALISIS_IA_DETALLADO.md
+═══════════════════════════════════════════════════════════════════════════════

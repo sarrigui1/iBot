@@ -3,6 +3,33 @@ import MetaTrader5 as mt5
 import pandas as pd
 import time
 
+# --- FASE 1: CARGAR CONFIG Y VALIDAR LICENCIA (ANTES de importar servicios) ---
+from config_loader import ConfigLoader
+from license_manager import LicenseManager
+
+# Cargar config.ini
+try:
+    config = ConfigLoader("config.ini")
+except FileNotFoundError as e:
+    st.error(str(e))
+    st.stop()
+except ValueError as e:
+    st.error(f"Error en config.ini: {e}")
+    st.stop()
+
+# Validar licencia contra Google Sheets
+lic_mgr = LicenseManager(config)
+is_valid, msg, was_cached, cached_date = lic_mgr.validate()
+
+if not is_valid:
+    st.error(f"❌ Licencia inválida: {msg}")
+    st.error("Por favor, verifica tu license_key en config.ini")
+    st.stop()
+
+if was_cached:
+    st.warning(f"⚠️ Licencia no validada hoy (última validación exitosa: {cached_date})")
+
+# --- IMPORTAR SERVICIOS (ahora con config disponible) ---
 from mt5_service import MT5Service
 from indicators_service import IndicatorsService
 from anthropic_service import AnthropicService
@@ -49,7 +76,7 @@ st.set_page_config(page_title=t["page_title"], page_icon="🤖", layout="wide")
 
 @st.cache_resource
 def get_services():
-    return MT5Service(), AnthropicService()
+    return MT5Service(config), AnthropicService(config)
 
 
 # Caché de noticias — TTL configurable para no ralentizar cada refresco
