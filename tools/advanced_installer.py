@@ -155,28 +155,8 @@ class AdvancedInstaller:
             return False
 
     def copy_documentation(self) -> bool:
-        """Copia documentación para el usuario."""
-        self.log("Copiando documentación...")
-
-        docs_to_copy = [
-            ("docs/USUARIO/README.txt", "docs"),
-            ("SISTEMA_GESTION_LICENCIAS.txt", "."),
-            ("VALIDACION_LICENCIA_SEGURA.txt", "."),
-        ]
-
-        copied = 0
-        for source_rel, dest_folder in docs_to_copy:
-            source = self.project_root / source_rel
-            if source.exists():
-                try:
-                    dest_file = self.install_dir / dest_folder / source.name
-                    dest_file.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(source, dest_file)
-                    copied += 1
-                except Exception as e:
-                    self.log(f"Error copiando {source_rel}: {e}", "WARN")
-
-        self.log(f"Documentación copiada: {copied} archivos", "SUCCESS")
+        """No copiar documentación (disponible en GitHub)."""
+        self.log("Documentación disponible en GitHub", "INFO")
         return True
 
     def copy_requirements(self) -> bool:
