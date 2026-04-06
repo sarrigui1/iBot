@@ -13,18 +13,37 @@ from typing import Optional, List
 class ConfigLoader:
     """Lee config.ini y expone parámetros como atributos."""
 
-    def __init__(self, config_path: str = "config.ini"):
+    def __init__(self, config_path: str = None):
         """
         Carga config.ini y valida todos los parámetros.
 
         Args:
-            config_path: Ruta al archivo config.ini
+            config_path: Ruta al archivo config.ini (default: busca en config/ o raíz)
 
         Raises:
             FileNotFoundError: Si config.ini no existe
             ValueError: Si hay campos requeridos inválidos o faltantes
         """
-        if not os.path.exists(config_path):
+        # Si no se proporciona ruta, buscar en ubicaciones estándar
+        if config_path is None:
+            possible_paths = [
+                os.path.join(os.path.dirname(__file__), '..', 'config', 'config.ini'),
+                'config.ini',
+                os.path.join('config', 'config.ini'),
+            ]
+            config_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    config_path = path
+                    break
+
+            if config_path is None:
+                raise FileNotFoundError(
+                    "config.ini no encontrado. "
+                    "Buscado en: config/config.ini o raíz del proyecto. "
+                    "Por favor, copia el template y edítalo con tus valores."
+                )
+        elif not os.path.exists(config_path):
             raise FileNotFoundError(
                 f"config.ini no encontrado en {config_path}. "
                 f"Por favor, copia el template y edítalo con tus valores."

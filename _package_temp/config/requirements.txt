@@ -1,0 +1,11 @@
+MetaTrader5
+streamlit
+pandas
+python-dotenv
+pandas_ta
+anthropic
+gspread>=6.0.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.2.0
+google-auth>=2.0.0
+python-dateutil>=2.8.2

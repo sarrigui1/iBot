@@ -14,7 +14,7 @@ import urllib.error
 from typing import Tuple
 import csv
 
-from config_loader import ConfigLoader
+from core.config_loader import ConfigLoader
 
 
 class LicenseManager:

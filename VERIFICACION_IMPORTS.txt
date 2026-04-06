@@ -1,0 +1,173 @@
+================================================================================
+REPORTE DE VERIFICACION - ESTRUCTURA DE PROYECTO E IMPORTS
+================================================================================
+Fecha: 2026-04-05
+Proyecto: trading_bot_mt5
+Punto de entrada: src/app.py
+
+================================================================================
+1. ESTRUCTURA ACTUAL DEL PROYECTO
+================================================================================
+
+RAIZ/
+├── app_main.py (punto de entrada principal)
+├── build_simple_installer.py
+├── config/
+│   ├── credentials.py
+│   └── config.ini
+├── core/
+│   ├── __init__.py ✓
+│   ├── config_loader.py ✓
+│   └── license_manager.py ✓
+├── src/
+│   ├── __init__.py ✓
+│   ├── app.py (punto de entrada de Streamlit)
+│   ├── anthropic_service.py ✓
+│   ├── feedback_service.py ✓
+│   ├── i18n.py ✓
+│   ├── indicators_service.py ✓
+│   ├── logger_service.py ✓
+│   ├── mt5_service.py ✓ <-- UBICADO AQUI, NO EN core/
+│   ├── news_service.py ✓
+│   ├── risk_manager.py ✓
+│   ├── smc_service.py ✓ <-- UBICADO AQUI, NO EN core/
+│   └── ui_components.py ✓
+├── tools/
+└── docs/
+
+================================================================================
+2. ANALISIS DE IMPORTS EN src/app.py
+================================================================================
+
+IMPORT STATEMENT              | ARCHIVO ESPERADO       | ESTADO     | UBICACION REAL
+─────────────────────────────────────────────────────────────────────────────
+from i18n                    | src/i18n.py            | ✓ OK       | src/i18n.py
+from core.config_loader      | core/config_loader.py  | ✓ OK       | core/config_loader.py
+from core.license_manager    | core/license_manager.py| ✓ OK       | core/license_manager.py
+from core.mt5_service        | core/mt5_service.py    | ✗ ERROR    | src/mt5_service.py
+from indicators_service      | src/indicators_service | ✓ OK       | src/indicators_service.py
+from anthropic_service       | src/anthropic_service  | ✓ OK       | src/anthropic_service.py
+from core.smc_service        | core/smc_service.py    | ✗ ERROR    | src/smc_service.py
+from risk_manager            | src/risk_manager.py    | ✓ OK       | src/risk_manager.py
+from ui_components           | src/ui_components.py   | ✓ OK       | src/ui_components.py
+from logger_service          | src/logger_service.py  | ✓ OK       | src/logger_service.py
+from feedback_service        | src/feedback_service.py| ✓ OK       | src/feedback_service.py
+from news_service            | src/news_service.py    | ✓ OK       | src/news_service.py
+from config import SYMBOLS   | config.py (raiz)       | ✗ MISSING  | [NO EXISTE]
+
+================================================================================
+3. PROBLEMAS IDENTIFICADOS
+================================================================================
+
+PROBLEMA 1: from core.mt5_service (LÍNEA 52)
+  - Error: el archivo está en src/mt5_service.py, no en core/
+  - Impacto: ImportError al ejecutar app.py
+  - Solución: cambiar a "from src.mt5_service import MT5Service"
+
+PROBLEMA 2: from core.smc_service (LÍNEA 55)
+  - Error: el archivo está en src/smc_service.py, no en core/
+  - Impacto: ImportError al ejecutar app.py
+  - Solución: cambiar a "from src.smc_service import SMCService"
+
+PROBLEMA 3: from config import ... (LÍNEA 73)
+  - Error: el archivo config.py no existe en ningún lado
+  - Impacto: ImportError al ejecutar app.py
+  - Información: Los parámetros (SYMBOLS, AUTONOMOUS_CONFIDENCE_THRESHOLD, etc.)
+    NO deben importarse de un módulo config.py, sino que deben extraerse de:
+    - config (ConfigLoader) que carga config.ini
+    - Las constantes deben definirse localmente o en un módulo constants.py
+  - Solución: necesaria investigación adicional - ver abajo
+
+================================================================================
+4. ARCHIVO config.py - ANALISIS DETALLADO
+================================================================================
+
+El import "from config import SYMBOLS, ..." hace referencia a:
+- SYMBOLS
+- SYMBOL_CURRENCIES
+- AUTONOMOUS_CONFIDENCE_THRESHOLD
+- MAX_SPREAD_POINTS
+- MAX_DAILY_LOSS_PCT
+- MAX_POSITIONS_PER_SYMBOL
+- AI_MIN_INTERVAL_MINS
+- NEWS_SHIELD_MINUTES
+- NEWS_CACHE_TTL
+- NEWS_SENTIMENT_CACHE
+
+Estos valores actualmente:
+a) Se cargan de config.ini a través de ConfigLoader
+   - config.symbols (en vez de SYMBOLS)
+   - config.autonomous_confidence_threshold
+   - config.max_spread_points
+   - etc.
+
+b) SYMBOL_CURRENCIES y NEWS_SENTIMENT_CACHE posiblemente estén definidas en otro
+   módulo que no existe actualmente
+
+OPCIÓN A (Crear config.py):
+  Crear src/config.py que genere estas constantes dinámicamente a partir de
+  config.ini y proporcione valores por defecto.
+
+OPCIÓN B (Refactorizar imports):
+  Cambiar app.py para obtener valores directamente de ConfigLoader:
+  - Reemplazar SYMBOLS → config.symbols
+  - Reemplazar AUTONOMOUS_CONFIDENCE_THRESHOLD → config.autonomous_confidence_threshold
+  - etc.
+
+================================================================================
+5. VALIDACION DE LICENCIA - VERIFICACION
+================================================================================
+
+Código actual (FASE 2 en app.py):
+  1. from core.config_loader import ConfigLoader
+  2. from core.license_manager import LicenseManager
+  3. config = ConfigLoader("config.ini")
+  4. lic_mgr = LicenseManager(config)
+  5. is_valid, msg, was_cached, cached_date = lic_mgr.validate()
+  6. if not is_valid: st.stop()
+
+Estado: ✓ CORRECTO
+  - ConfigLoader existe en core/ ✓
+  - LicenseManager existe en core/ ✓
+  - Archivos __init__.py presentes ✓
+  - Lógica de validación está en el orden correcto (FASE 2) ✓
+  - st.stop() detiene ejecución si licencia es inválida ✓
+
+================================================================================
+6. RESUMEN - ACCIONES REQUERIDAS PARA QUE FUNCIONE
+================================================================================
+
+CRITICO (Sin estos cambios, NO FUNCIONARA):
+
+  [ ] ACCION 1: Crear src/config.py o refactorizar imports para solucionar
+                el problema del módulo "config" faltante
+  
+  [ ] ACCION 2: Cambiar "from core.mt5_service" a "from src.mt5_service"
+                (línea 52 en src/app.py)
+  
+  [ ] ACCION 3: Cambiar "from core.smc_service" a "from src.smc_service"
+                (línea 55 en src/app.py)
+
+IMPORTANTE (Verificación adicional):
+
+  [ ] Verificar que config/config.ini existe y contiene todas las secciones
+      requeridas (LICENSE, MT5_ACCOUNT, TRADING_PARAMETERS, TIMEZONE, 
+      REFRESH_TIMING, NEWS_CONFIG, UI_LANGUAGE)
+  
+  [ ] Verificar que MetaTrader5 y anthropic (Claude) están instalados:
+      pip list | grep -i "metatrader\|anthropic"
+
+  [ ] Verificar que Streamlit está instalado:
+      pip list | grep -i streamlit
+
+================================================================================
+7. COMANDO PARA EJECUTAR LA APLICACION (una vez se arreglen los imports)
+================================================================================
+
+  streamlit run src/app.py
+
+O a través de app_main.py:
+
+  python app_main.py
+
+================================================================================
