@@ -20,6 +20,7 @@ class LicenseManager:
 
     CACHE_DAYS = 7
     CACHE_FILE = "data/license_cache.json"
+    DAILY_VALIDATION_FILE = "data/license_daily_check.json"
     # Endpoint privado de Google Apps Script (reemplaza acceso directo a Google Sheets)
     GOOGLE_APPS_SCRIPT_ENDPOINT = "https://script.google.com/macros/s/AKfycbwl-fdkWihZ58NT3y8SVUfQVJ9H_kYr8vrehjpYwR2t_zYSfcS-YmOBCPXVUrjKpl17/exec"
 
@@ -39,7 +40,7 @@ class LicenseManager:
 
     def validate(self) -> Tuple[bool, str, bool, str]:
         """
-        Valida la licencia contra Google Sheets.
+        Valida la licencia contra Google Sheets (máximo una vez por día).
 
         Returns:
             (is_valid, message, was_cached, cached_timestamp)
@@ -49,19 +50,25 @@ class LicenseManager:
             - cached_timestamp: Fecha de última validación exitosa (si fue cached)
 
         Flujo:
-        1. Intenta validar contra Google Sheet en línea
-        2. Si éxito: guarda en caché y retorna True
-        3. Si falla (sin internet):
+        1. Si ya validó hoy: retorna caché sin conexión
+        2. Si no: intenta validación en línea
+        3. Si éxito: guarda en caché y retorna True
+        4. Si falla (sin internet):
            - Si caché existe y <7 días: retorna True + was_cached=True
            - Si caché expirado: retorna False
            - Si no hay caché: retorna False
         """
 
-        # Intentar validación en línea
+        # Optimización: verificar si ya validó hoy
+        if self._already_validated_today():
+            return self._validate_with_cache()
+
+        # Intentar validación en línea (solo si no validó hoy)
         try:
             is_valid, msg = self._validate_online()
             if is_valid:
                 self._save_cache()
+                self._save_daily_check()  # Marca que validó hoy
                 return is_valid, msg, False, ""
             else:
                 # Validación online falló (error en datos, no en conexión)
@@ -219,3 +226,42 @@ class LicenseManager:
         except Exception as e:
             # No bloquear si el caché falla
             print(f"[LicenseManager] Advertencia al guardar caché: {e}")
+
+    def _already_validated_today(self) -> bool:
+        """
+        Verifica si ya validó la licencia hoy.
+
+        Returns:
+            True si ya validó hoy, False en caso contrario
+        """
+        if not os.path.exists(self.DAILY_VALIDATION_FILE):
+            return False
+
+        try:
+            with open(self.DAILY_VALIDATION_FILE, "r") as f:
+                data = json.load(f)
+
+            last_check = datetime.fromisoformat(data.get("last_check", ""))
+            today = datetime.now().date()
+            last_check_date = last_check.date()
+
+            # Retornar True si la última validación fue hoy
+            return today == last_check_date
+
+        except Exception:
+            return False
+
+    def _save_daily_check(self):
+        """Guarda marca de validación diaria."""
+        data = {
+            "license_key": self.license_key,
+            "last_check": datetime.now().isoformat(),
+        }
+
+        try:
+            os.makedirs(os.path.dirname(self.DAILY_VALIDATION_FILE), exist_ok=True)
+            with open(self.DAILY_VALIDATION_FILE, "w") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            # No bloquear si falla
+            print(f"[LicenseManager] Advertencia al guardar check diario: {e}")
