@@ -30,10 +30,11 @@ t = get_translations(_lang_init)
 st.set_page_config(page_title=t["page_title"], page_icon="🤖", layout="wide")
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FASE 2: VALIDACIÓN DE LICENCIA — Antes de importar servicios pesados
+# FASE 2: INICIALIZAR DEBUG LOGGER y CARGAR CONFIGURACIÓN
 # ═══════════════════════════════════════════════════════════════════════════════
 from core.config_loader import ConfigLoader
 from core.license_manager import LicenseManager
+from debug_logger import DebugLogger
 
 try:
     # Calcular ruta absoluta a config.ini
@@ -46,19 +47,37 @@ except ValueError as e:
     st.error(f"Error en config.ini: {e}")
     st.stop()
 
+# Inicializar logger con la configuración
+log_dir = os.path.join(_root_dir, 'data')
+DebugLogger.initialize(debug_mode=config.debug_mode, log_dir=log_dir)
+logger = DebugLogger()
+
+logger.info("═" * 60)
+logger.info("iBot Trading iniciado")
+logger.info(f"Modo: {'DEBUG' if config.debug_mode else 'INFO'}")
+logger.info(f"Zona horaria: {config.local_tz_name} (UTC{config.local_utc_offset:+d})")
+logger.info(f"Símbolos: {', '.join(config.symbols)}")
+logger.info("═" * 60)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FASE 3: VALIDACIÓN DE LICENCIA
+# ═══════════════════════════════════════════════════════════════════════════════
 lic_mgr = LicenseManager(config)
 is_valid, msg, was_cached, cached_date = lic_mgr.validate()
 
+logger.info(f"Validación de licencia: {msg}")
+
 if not is_valid:
+    logger.error(f"Licencia inválida: {msg}")
     st.error(f"❌ Licencia inválida: {msg}")
     st.error("Por favor, verifica tu license_key en config.ini")
     st.stop()
 
 if was_cached:
-    st.warning(f"⚠️ Licencia no validada hoy (última validación exitosa: {cached_date})")
+    logger.warning(f"Licencia no validada hoy (última validación exitosa: {cached_date})")
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FASE 3: IMPORTACIONES DIFERIDAS — Solo después de validar licencia
+# FASE 4: IMPORTACIONES DIFERIDAS — Solo después de validar licencia
 # (Los decoradores @st.cache_data/@st.cache_resource se registran aquí)
 # ═══════════════════════════════════════════════════════════════════════════════
 from mt5_service import MT5Service

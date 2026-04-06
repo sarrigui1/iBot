@@ -93,22 +93,21 @@ class AnthropicService:
         Inicializa AnthropicService.
 
         Args:
-            config: ConfigLoader instance (para distribución comercial).
-                   Si es None, intenta obtener la API key de variables de entorno.
+            config: ConfigLoader instance con la API key de Anthropic.
+                   REQUERIDO: config.anthropic_api_key debe estar configurada.
         """
-        # Obtener API key desde config o variables de entorno
-        if config is not None:
-            # En producción: la API key NO va en config.ini
-            # Se inyectaría de otro lado (variables de entorno del sistema)
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-        else:
-            # Para desarrollo: leer de variables de entorno
-            api_key = os.getenv("ANTHROPIC_API_KEY")
-
-        if not api_key:
+        if config is None:
             raise ValueError(
-                "ANTHROPIC_API_KEY no configurada. "
-                "Define la variable de entorno ANTHROPIC_API_KEY"
+                "AnthropicService requiere un ConfigLoader válido. "
+                "Pasa config como parámetro."
+            )
+
+        api_key = config.anthropic_api_key
+
+        if not api_key or api_key == "tu_api_key_aqui":
+            raise ValueError(
+                "ANTHROPIC_API_KEY no está configurada o es inválida. "
+                "Edita config.ini sección [API_KEYS] con tu API key real."
             )
 
         self.client = anthropic.Anthropic(api_key=api_key)

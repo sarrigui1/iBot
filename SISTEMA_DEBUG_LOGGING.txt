@@ -1,0 +1,257 @@
+================================================================================
+SISTEMA DE DEBUG LOGGING - iBot Trading
+================================================================================
+Fecha: 2026-04-05
+Versión: 1.0
+
+================================================================================
+RESUMEN
+================================================================================
+
+iBot Trading incluye un sistema de logging completo con dos modos:
+
+1. INFO (por defecto)
+   └─ Registra solo eventos importantes:
+      - Validaciones de licencia
+      - Decisiones de AI
+      - Configuraciones cargadas
+      - Errores críticos
+
+2. DEBUG (modo desarrollador)
+   └─ Registra ABSOLUTAMENTE TODO:
+      - Cada llamada de función
+      - Valores de variables
+      - Errores y excepciones con detalles
+      - Ejecución paso a paso
+      - Información de métodos internos
+
+================================================================================
+COMO ACTIVAR DEBUG MODE
+================================================================================
+
+1. Abre el archivo: config/config.ini
+
+2. Busca la sección [DEBUG] (al final del archivo)
+
+3. Cambia:
+   DEBUG_MODE = false
+   a:
+   DEBUG_MODE = true
+
+4. Guarda el archivo
+
+5. Reinicia la aplicación (cierra y abre launcher.bat)
+
+NOTA: Los cambios toman efecto al reiniciar la aplicación.
+
+================================================================================
+DONDE SE GUARDAN LOS LOGS
+================================================================================
+
+Archivo de log: data/ibot.log
+
+Este archivo se crea automáticamente en la carpeta de instalación.
+
+Ubicación completa:
+  C:\iBot_Trading\data\ibot.log
+
+El archivo tiene el siguiente formato:
+  [YYYY-MM-DD HH:MM:SS] [LEVEL   ] Mensaje
+
+Ejemplo:
+  [2026-04-05 10:30:45] [INFO    ] iBot Trading iniciado
+  [2026-04-05 10:30:46] [DEBUG   ] Conectando a MetaTrader5...
+  [2026-04-05 10:30:47] [ERROR   ] No se pudo conectar a MT5
+
+================================================================================
+NIVELES DE LOG
+================================================================================
+
+DEBUG
+  └─ Información detallada para desarrolladores
+  └─ Se registra solo si DEBUG_MODE = true
+  └─ Ejemplo: Carga de módulos, parámetros de funciones
+
+INFO
+  └─ Eventos importantes
+  └─ Se registra siempre
+  └─ Ejemplo: Licencia validada, AI tomó decisión
+
+WARNING
+  └─ Advertencias que requieren atención
+  └─ Se registra siempre
+  └─ Ejemplo: Licencia validada desde caché (sin internet)
+
+ERROR
+  └─ Errores que impiden la operación
+  └─ Se registra siempre
+  └─ Ejemplo: Licencia inválida, conexión MT5 fallida
+
+================================================================================
+COMO LEER LOS LOGS
+================================================================================
+
+OPCION 1: Abrir el archivo directamente
+────────────────────────────────────────────────────────────────────
+
+  1. Ve a: C:\iBot_Trading\data\
+  2. Abre ibot.log con:
+     - Bloc de notas (Notepad)
+     - Visual Studio Code
+     - Cualquier editor de texto
+
+OPCION 2: Ver logs en tiempo real (PowerShell)
+────────────────────────────────────────────────────────────────────
+
+  # Ver las últimas 50 líneas
+  Get-Content "C:\iBot_Trading\data\ibot.log" -Tail 50 -Wait
+
+  # Ver logs en tiempo real
+  Get-Content "C:\iBot_Trading\data\ibot.log" -Tail 50 -Follow
+
+OPCION 3: Buscar errores específicos
+────────────────────────────────────────────────────────────────────
+
+  # En PowerShell, buscar errores
+  Get-Content "C:\iBot_Trading\data\ibot.log" | Select-String "ERROR"
+
+  # En CMD, buscar palabras
+  findstr /i "error" "C:\iBot_Trading\data\ibot.log"
+
+================================================================================
+CUANDO USAR CADA MODO
+================================================================================
+
+MODO INFO (DEBUG_MODE = false)
+  └─ Instalaciones de producción
+  └─ Clientes en vivo
+  └─ Cuando quieres logs limpios y rápidos
+  └─ Genera archivo de log más pequeño
+  └─ Menos impacto en performance
+
+MODO DEBUG (DEBUG_MODE = true)
+  └─ Durante desarrollo
+  └─ Solución de problemas
+  └─ Cuando algo no funciona correctamente
+  └─ Para análisis detallado de errores
+  └─ Archivo de log será más grande (100+ MB por día)
+
+================================================================================
+EJEMPLOS DE LOGS
+================================================================================
+
+MODO INFO - Salida típica:
+────────────────────────────────────────────────────────────────────
+
+[2026-04-05 10:30:45] [INFO    ] ════════════════════════════════════════════
+[2026-04-05 10:30:45] [INFO    ] iBot Trading iniciado
+[2026-04-05 10:30:45] [INFO    ] Modo: INFO
+[2026-04-05 10:30:45] [INFO    ] Zona horaria: Colombia (UTC-5)
+[2026-04-05 10:30:45] [INFO    ] Símbolos: EURUSD, GBPUSD, USDJPY
+[2026-04-05 10:30:45] [INFO    ] ════════════════════════════════════════════
+[2026-04-05 10:30:46] [INFO    ] Validación de licencia: Licencia válida
+[2026-04-05 10:32:15] [INFO    ] AI Decision: EURUSD - COMPRA - Confianza 0.87
+[2026-04-05 10:32:16] [INFO    ] Operación ejecutada: Ticket 12345
+
+MODO DEBUG - Salida típica (más detallada):
+────────────────────────────────────────────────────────────────────
+
+[2026-04-05 10:30:45] [INFO    ] ════════════════════════════════════════════
+[2026-04-05 10:30:45] [INFO    ] iBot Trading iniciado
+[2026-04-05 10:30:45] [DEBUG   ] Ruta del proyecto: C:\iBot_Trading\
+[2026-04-05 10:30:45] [DEBUG   ] ConfigLoader inicializado
+[2026-04-05 10:30:45] [DEBUG   ] Cargando config.ini...
+[2026-04-05 10:30:45] [DEBUG   ] LICENSE_KEY: IBOT-2C51B0-...
+[2026-04-05 10:30:45] [DEBUG   ] MT5_LOGIN: 52823419
+[2026-04-05 10:30:45] [DEBUG   ] Símbolos cargados: 5
+[2026-04-05 10:30:46] [INFO    ] Modo: DEBUG
+[2026-04-05 10:30:46] [DEBUG   ] Conectando a MT5 con login 52823419
+[2026-04-05 10:30:47] [DEBUG   ] MT5 conectado exitosamente
+[2026-04-05 10:30:47] [DEBUG   ] Precarga de candles EURUSD H1
+[2026-04-05 10:30:48] [DEBUG   ] Datos cargados: 100 candles
+[2026-04-05 10:32:15] [DEBUG   ] Analizando EURUSD con SMC...
+[2026-04-05 10:32:15] [DEBUG   ] Encontrado soporte en 1.08450
+[2026-04-05 10:32:15] [DEBUG   ] Calculando R/R: SL=50 TP=100
+[2026-04-05 10:32:15] [INFO    ] AI Decision: EURUSD - COMPRA - Confianza 0.87
+[2026-04-05 10:32:16] [DEBUG   ] Ejecutando orden: BUY EURUSD LOT 0.5
+[2026-04-05 10:32:16] [INFO    ] Operación ejecutada: Ticket 12345
+
+================================================================================
+SOLUCIONAR PROBLEMAS CON LOGS
+================================================================================
+
+"No aparecen los logs"
+  └─ Verifica que DEBUG_MODE está en config.ini
+  └─ Verifica que la carpeta data/ existe
+  └─ Revisa permisos de lectura/escritura en C:\iBot_Trading\data\
+
+"El archivo de log crece muy rápido (modo DEBUG)"
+  └─ Esto es normal en modo DEBUG
+  └─ Puedes cambiar a INFO para reducir tamaño
+  └─ Elimina ibot.log antiguo para liberar espacio
+
+"No veo información que busco"
+  └─ Si DEBUG_MODE = false, no verás mensajes DEBUG
+  └─ Activa DEBUG_MODE = true en config.ini
+  └─ Reinicia la aplicación
+
+"El archivo de log está vacío o corrupto"
+  └─ Elimina ibot.log
+  └─ Reinicia la aplicación (se creará uno nuevo)
+  └─ Verifica permisos de escritura en la carpeta
+
+================================================================================
+CONFIGURACIONES OPCIONALES
+================================================================================
+
+En el archivo config.ini:
+
+[DEBUG]
+DEBUG_MODE = false    # true para DEBUG, false para INFO
+
+Esto es lo único que necesitas cambiar. El logger se configura automáticamente.
+
+================================================================================
+PERFORMANCE Y STORAGE
+================================================================================
+
+MODO INFO:
+  - Archivo de log: ~10-20 MB por día
+  - Overhead de CPU: < 1%
+  - Ideal para producción
+
+MODO DEBUG:
+  - Archivo de log: ~100-200 MB por día
+  - Overhead de CPU: 2-5%
+  - Usar solo durante desarrollo/troubleshooting
+
+LIMPIEZA DE LOGS:
+  - Archivo se crea nuevo cada inicio
+  - Logs anteriores se sobrescriben
+  - Puedes renombrar ibot.log para guardar historial
+  - O hacer backup de data/ periódicamente
+
+================================================================================
+PROXIMOS PASOS
+================================================================================
+
+1. ✓ Sistema de logging implementado
+2. Próximo: Integrar logging en todas las funciones críticas
+3. Próximo: Crear dashboard para visualizar logs en tiempo real
+4. Próximo: Enviar logs a servidor de análisis
+
+================================================================================
+SOPORTE
+================================================================================
+
+Si necesitas más información sobre logging:
+  - Email: support@ibot-trading.com
+  - Docs: Revisar este archivo (SISTEMA_DEBUG_LOGGING.txt)
+  - GitHub: github.com/sarrigui1/iBot
+
+Para reportar un bug, incluye:
+  1. El contenido de data/ibot.log (las últimas 100 líneas)
+  2. Tu config.ini (sin contraseñas)
+  3. Descripción detallada del problema
+
+================================================================================

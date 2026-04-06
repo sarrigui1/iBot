@@ -97,8 +97,7 @@ class AdvancedInstaller:
         self.log("Compilando código fuente a bytecode...")
 
         files_to_compile = [
-            # src/
-            ("src/app.py", "src"),
+            # src/ - NOTA: app.py NO se compila (Streamlit lo necesita como .py)
             ("src/config.py", "src"),
             ("src/anthropic_service.py", "src"),
             ("src/mt5_service.py", "src"),
@@ -110,11 +109,10 @@ class AdvancedInstaller:
             ("src/feedback_service.py", "src"),
             ("src/news_service.py", "src"),
             ("src/i18n.py", "src"),
+            ("src/debug_logger.py", "src"),
             # core/
             ("core/config_loader.py", "core"),
             ("core/license_manager.py", "core"),
-            # app_main.py
-            ("app_main.py", "."),
         ]
 
         compiled = 0
@@ -122,11 +120,13 @@ class AdvancedInstaller:
             source_path = self.project_root / source_file
             if source_path.exists():
                 try:
-                    dest_dir = self.install_dir / dest_folder / "__pycache__"
+                    dest_dir = self.install_dir / dest_folder
                     dest_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Compilar a bytecode
-                    py_compile.compile(str(source_path), cfile=str(dest_dir / Path(source_file).stem) + ".pyc")
+                    # Compilar a bytecode en el mismo directorio (no en __pycache__)
+                    # Así Python puede importar directamente: from src.app import ...
+                    cfile = str(dest_dir / Path(source_file).stem) + ".pyc"
+                    py_compile.compile(str(source_path), cfile=cfile, doraise=True)
                     compiled += 1
                 except Exception as e:
                     self.log(f"Error compilando {source_file}: {e}", "WARN")
@@ -197,6 +197,55 @@ class AdvancedInstaller:
             self.log(f"Error copiando requirements: {e}", "ERROR")
             return False
 
+    def copy_uncompiled_python_files(self) -> bool:
+        """Copia archivos .py que NO pueden ser compilados (Streamlit los necesita)."""
+        self.log("Copiando archivos Python no compilados...")
+
+        files_to_copy = [
+            ("app_main.py", "."),
+            ("src/app.py", "src"),
+        ]
+
+        copied = 0
+        for source_rel, dest_folder in files_to_copy:
+            source = self.project_root / source_rel
+            if source.exists():
+                try:
+                    dest_dir = self.install_dir / dest_folder
+                    dest_dir.mkdir(parents=True, exist_ok=True)
+                    dest_file = dest_dir / source.name
+                    shutil.copy2(source, dest_file)
+                    copied += 1
+                except Exception as e:
+                    self.log(f"Error copiando {source_rel}: {e}", "WARN")
+
+        self.log(f"Archivos Python copiados: {copied}", "SUCCESS")
+        return copied > 0
+
+    def copy_init_files(self) -> bool:
+        """Copia archivos __init__.py para que Python reconozca los directorios como paquetes."""
+        self.log("Copiando archivos de inicialización de paquetes...")
+
+        init_files = [
+            ("src/__init__.py", "src"),
+            ("core/__init__.py", "core"),
+        ]
+
+        copied = 0
+        for source_rel, dest_folder in init_files:
+            source = self.project_root / source_rel
+            if source.exists():
+                try:
+                    dest_file = self.install_dir / dest_folder / "__init__.py"
+                    dest_file.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, dest_file)
+                    copied += 1
+                except Exception as e:
+                    self.log(f"Error copiando {source_rel}: {e}", "WARN")
+
+        self.log(f"Archivos __init__.py copiados: {copied}", "SUCCESS")
+        return copied == len(init_files)
+
     def install_dependencies(self) -> bool:
         """Instala dependencias Python."""
         self.log("Instalando dependencias Python...")
@@ -232,7 +281,7 @@ echo ====================================
 echo.
 
 cd /d "{self.install_dir}"
-streamlit run app_main.py
+streamlit run src/app.py
 
 pause
 """
@@ -432,7 +481,9 @@ Generado automáticamente por el instalador
         steps = [
             ("Verificar Python", self.check_python_version),
             ("Crear directorios", self.create_directories),
-            ("Compilar código", self.compile_python_files),
+            ("Copiar scripts principales", self.copy_uncompiled_python_files),
+            ("Compilar módulos", self.compile_python_files),
+            ("Copiar paquetes", self.copy_init_files),
             ("Copiar configuración", self.copy_config_template),
             ("Copiar documentación", self.copy_documentation),
             ("Copiar dependencias", self.copy_requirements),

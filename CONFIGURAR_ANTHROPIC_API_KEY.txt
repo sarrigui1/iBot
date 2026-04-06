@@ -1,0 +1,299 @@
+================================================================================
+CONFIGURAR API KEY DE ANTHROPIC - GUIA COMPLETA
+================================================================================
+Fecha: 2026-04-05
+Versión: 1.0
+
+================================================================================
+RESUMEN
+================================================================================
+
+iBot Trading requiere una API key válida de Anthropic (Claude API) para:
+- Análisis de mercado con IA
+- Decisiones de trading inteligentes
+- Análisis SMC automático
+
+Sin la API key, el sistema NO puede hacer análisis de IA.
+
+================================================================================
+PASO 1: CREAR CUENTA EN ANTHROPIC
+================================================================================
+
+1. Ve a: https://console.anthropic.com/
+   (o https://claude.ai si no tienes cuenta aún)
+
+2. Haz clic en "Sign up"
+
+3. Completa el formulario:
+   - Email
+   - Contraseña
+   - Información personal
+
+4. Verifica tu email
+
+5. ¡Cuenta creada!
+
+================================================================================
+PASO 2: GENERAR API KEY
+================================================================================
+
+1. Inicia sesión en: https://console.anthropic.com/
+
+2. En el menú de la izquierda, haz clic en: "API Keys"
+   (O ve directamente a: https://console.anthropic.com/keys)
+
+3. Haz clic en el botón: "Create Key"
+
+4. Elige opciones:
+   - Name: "iBot Trading" (o cualquier nombre descriptivo)
+   - Expiration: "No expiration" (recomendado) o elige una fecha
+
+5. Haz clic en: "Create"
+
+6. ¡IMPORTANTE! Copia la API key completa
+   - Verás algo como: sk-ant-v0-xxxxxxxxxxxxxxxxxxxx
+   - COPIAR COMPLETO (es muy largo)
+   - NO compartir con nadie
+   - NO publicar en GitHub
+
+7. Guarda en un lugar seguro (documento privado, gestor de contraseñas, etc.)
+
+================================================================================
+PASO 3: CONFIGURAR EN IBOT
+================================================================================
+
+1. Abre el archivo: config/config.ini
+
+2. Busca la sección: [API_KEYS]
+
+3. Reemplaza:
+   ANTHROPIC_API_KEY = tu_api_key_aqui
+
+   Con:
+   ANTHROPIC_API_KEY = sk-ant-v0-xxxxxxxxxxxxxxxxxxxxx
+
+   Ejemplo real (FALSO - no uses este):
+   ANTHROPIC_API_KEY = sk-ant-v0-abcd1234efgh5678ijkl9012mnop3456
+
+4. Guarda el archivo
+
+5. Cierra y reabre launcher.bat
+
+6. ¡Listo! Ahora iBot puede usar IA
+
+================================================================================
+VERIFICAR QUE FUNCIONA
+================================================================================
+
+Después de configurar la API key:
+
+1. Abre launcher.bat
+
+2. Espera a que Streamlit inicie (verás: "Local URL: http://localhost:8501")
+
+3. Abre en navegador: http://localhost:8501
+
+4. Activa la opción "AI" en la aplicación
+
+5. Si funciona:
+   ✓ Verás análisis de trading
+   ✓ El log dirá: "API key validada"
+   ✓ Decisiones de IA se mostrarán
+
+6. Si falla:
+   ✗ Verás error 401 o "authentication error"
+   ✗ Revisa que la API key sea exacta (sin espacios extras)
+   ✗ Verifica en https://console.anthropic.com/ que la clave esté activa
+
+================================================================================
+ERRORES COMUNES Y SOLUCIONES
+================================================================================
+
+Error: "invalid x-api-key"
+  └─ Causa: API key es inválida, vencida o mal copiada
+  └─ Solución:
+     1. Copia la API key de nuevo desde console.anthropic.com
+     2. Verifica que NO haya espacios al inicio o final
+     3. Asegúrate de haber copiado COMPLETA (es muy larga)
+     4. Regenera una nueva si es necesario
+
+Error: "ANTHROPIC_API_KEY no está configurada"
+  └─ Causa: No pusiste la API key en config.ini
+  └─ Solución:
+     1. Abre config/config.ini
+     2. En [API_KEYS], agrega la API key real
+     3. NO uses "tu_api_key_aqui" (eso es solo un placeholder)
+
+Error: "authentication_error"
+  └─ Causa: Credenciales rechazadas por Anthropic
+  └─ Solución:
+     1. Verifica en https://console.anthropic.com/
+     2. La clave debe estar ACTIVA (no desactivada)
+     3. Si es muy vieja, prueba regenerarla
+     4. Verifica que NO haya límites de cuota excedidos
+
+Error: "connection timeout" o "HTTP 529"
+  └─ Causa: Servidor de Anthropic congestionado o tu conexión es lenta
+  └─ Solución:
+     1. Espera unos minutos y reintentar
+     2. Verifica tu conexión a internet
+     3. Los reintentos son automáticos (2 intentos por defecto)
+
+Error: "Invalid model ID 'claude-haiku-...'"
+  └─ Causa: El modelo no existe o tu plan no lo permite
+  └─ Solución:
+     1. Verifica en https://console.anthropic.com/settings/usage
+     2. iBot usa: claude-haiku-4-5-20251001 (económico)
+     3. Si no tienes acceso, contacta a Anthropic
+
+================================================================================
+PLANES Y PRECIOS (ABRIL 2026)
+================================================================================
+
+PLAN GRATUITO (Free)
+  - $0 / mes
+  - Límite: 15,000 tokens/día
+  - Bueno para: Pruebas, desarrollo
+  - Ideal para: Primeros pasos
+
+PLAN PAY-AS-YOU-GO (Pago por uso)
+  - No hay suscripción
+  - Pagas solo lo que usas
+  - Input: $3 / 1M tokens
+  - Output: $15 / 1M tokens
+  - Ideal para: Producción
+
+PLAN PRO (Suscripción)
+  - $20 / mes (próximamente en 2026)
+  - Límite: 10M tokens/mes
+  - Útil si usas mucho
+
+ESTIMADO DE COSTO PARA IBOT:
+  - Análisis por símbolo: ~100-200 tokens
+  - Si analizas 5 símbolos cada 5 minutos: ~1000 análisis/día
+  - Costo estimado: $0.30-0.60 / día ($10-20 / mes)
+
+================================================================================
+SEGURIDAD - PROTEGER TU API KEY
+================================================================================
+
+✓ HACER:
+  - Guardar en lugar seguro (no en email)
+  - Usar gestor de contraseñas
+  - Regenerar si crees que fue comprometida
+  - Revisar uso regularmente
+
+✗ NO HACER:
+  - Publicar en GitHub o público
+  - Compartir con colegas
+  - Dejar en documentos compartidos
+  - Usar en aplicaciones no confiables
+
+SI FUE COMPROMETIDA:
+  1. Ve a: https://console.anthropic.com/keys
+  2. Busca la clave comprometida
+  3. Haz clic en "Delete"
+  4. Crea una nueva clave
+  5. Actualiza config.ini
+  6. Reinicia iBot
+
+================================================================================
+MONITOREAR USO DE API
+================================================================================
+
+1. Ve a: https://console.anthropic.com/settings/usage
+
+2. Verás:
+   - Tokens usados hoy
+   - Tokens usados este mes
+   - Costo total
+
+3. Si ves cargos anormales:
+   - Revisa si la API key fue comprometida
+   - Regenera la clave
+   - Contacta a soporte de Anthropic
+
+4. Establece límites (opcional):
+   - Ve a "Billing Limits"
+   - Fija un límite máximo mensual
+   - iBot se detendrá si lo excede
+
+================================================================================
+MODELOS DISPONIBLES EN IBOT
+================================================================================
+
+ACTUAL (Abril 2026):
+  claude-haiku-4-5-20251001
+    - Rápido y económico
+    - 2M tokens contexto
+    - Perfecto para análisis de trading
+    - Costo: ~$3 por 1M tokens input
+
+ALTERNATIVAS (si quieres cambiar):
+  claude-sonnet-4-6
+    - Más inteligente y potente
+    - 200K tokens contexto
+    - Mejor para decisiones complejas
+    - Costo: ~$3 por 1M input, $15 por 1M output
+    - NOTA: Más caro pero mejor calidad
+
+Cambiar el modelo en src/anthropic_service.py línea 86:
+  MODEL = "claude-haiku-4-5-20251001"  ← cambiar aquí
+
+================================================================================
+PROXIMOS PASOS
+================================================================================
+
+1. ✓ Crear cuenta en Anthropic
+2. ✓ Generar API key
+3. ✓ Configurar en config.ini
+4. ✓ Validar que funciona
+5. Próximo: Revisar logs si hay problemas
+6. Próximo: Monitorear uso y costos
+
+================================================================================
+SOPORTE Y DOCUMENTACION
+================================================================================
+
+Documentación oficial de Anthropic:
+  - API docs: https://docs.anthropic.com/
+  - Console: https://console.anthropic.com/
+  - Status: https://status.anthropic.com/
+
+Para problemas técnicos:
+  - Contacta a Anthropic Support
+  - Email: support@anthropic.com
+
+Para problemas con iBot:
+  - Email: support@ibot-trading.com
+  - Incluye tu configuración (sin API key)
+  - Incluye los últimos logs (data/ibot.log)
+
+================================================================================
+PREGUNTAS FRECUENTES
+================================================================================
+
+¿Puedo usar una API key gratuita?
+  → Sí, pero tiene límites (15K tokens/día).
+  → Para uso en vivo, considera un plan de pago.
+
+¿Es seguro poner la API key en config.ini?
+  → Sí, si el archivo está protegido.
+  → Asegúrate de NO compartir config.ini.
+  → En producción, considera variables de entorno.
+
+¿Qué pasa si se agota el crédito?
+  → Las llamadas fallarán con error 429 o 402.
+  → iBot mostrará: "Billing quota exceeded".
+  → Actualiza tu plan o espera al próximo ciclo.
+
+¿Necesito IA para que funcione iBot?
+  → No, puedes desactivar la opción en la UI.
+  → Sin IA, funciona como analizador técnico.
+  → Con IA, agrega decisiones automáticas.
+
+¿Puedo usar otra IA (OpenAI, etc.)?
+  → Actualmente no, iBot está diseñado para Anthropic.
+  → Próximas versiones podrían soportar múltiples APIs.
+
+================================================================================

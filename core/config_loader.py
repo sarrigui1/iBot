@@ -51,6 +51,8 @@ class ConfigLoader:
             "REFRESH_TIMING": ["DEFAULT_REFRESH_SECONDS", "AI_MIN_INTERVAL_MINS"],
             "NEWS_CONFIG": ["NEWS_SHIELD_MINUTES", "NEWS_CACHE_TTL"],
             "UI_LANGUAGE": ["LANGUAGE"],
+            "API_KEYS": ["ANTHROPIC_API_KEY"],
+            "DEBUG": ["DEBUG_MODE"],
         }
 
         for section, fields in required_sections.items():
@@ -131,6 +133,19 @@ class ConfigLoader:
         self.language: str = self.parser.get("UI_LANGUAGE", "LANGUAGE").strip()
         if self.language not in ["es", "en"]:
             raise ValueError("LANGUAGE debe ser 'es' o 'en'")
+
+        # API_KEYS
+        self.anthropic_api_key: str = self.parser.get("API_KEYS", "ANTHROPIC_API_KEY").strip()
+
+        if not self.anthropic_api_key or self.anthropic_api_key == "tu_api_key_aqui":
+            raise ValueError(
+                "ANTHROPIC_API_KEY no está configurada. "
+                "Edita config.ini sección [API_KEYS] y agrega tu API key de Anthropic."
+            )
+
+        # DEBUG
+        debug_str = self.parser.get("DEBUG", "DEBUG_MODE").strip().lower()
+        self.debug_mode: bool = debug_str in ["true", "1", "yes", "on"]
 
     def __repr__(self) -> str:
         return f"<ConfigLoader license={self.license_key} symbols={len(self.symbols)} timezone={self.local_tz_name}>"
