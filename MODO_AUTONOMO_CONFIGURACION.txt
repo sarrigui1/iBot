@@ -1,0 +1,347 @@
+================================================================================
+CONFIGURACIÓN DEL MODO AUTÓNOMO
+================================================================================
+Fecha: 2026-04-06
+Versión: 1.0
+
+================================================================================
+RESUMEN
+================================================================================
+
+El modo autónomo permite que la IA ejecute trades automáticamente cuando:
+✓ La confianza >= umbral configurado (default: 85%)
+✓ Se cumplen todas las validaciones de riesgo
+✓ No hay bloqueos de seguridad (news shield, spread, etc.)
+
+Esta guía explica cómo configurar el tamaño de lote para modo autónomo.
+
+================================================================================
+CONFIGURACIÓN EN config.ini
+================================================================================
+
+[AUTONOMOUS_MODE]
+ENABLED = true                    # true: modo autónomo habilitado
+DEFAULT_LOT_SIZE = 0.5            # Tamaño de lote fijo en lotes
+USE_DYNAMIC_LOT = true            # true: cálculo dinámico, false: lote fijo
+
+================================================================================
+PARÁMETROS EXPLICADOS
+================================================================================
+
+1. ENABLED (true/false)
+   └─ true: Modo autónomo activo, la IA ejecuta trades automáticamente
+   └─ false: Modo manual, el usuario debe ejecutar trades con botón
+
+   Ejemplo:
+   ENABLED = true     → IA ejecuta si confidence >= 85%
+   ENABLED = false    → IA sugiere, usuario ejecuta manualmente
+
+2. DEFAULT_LOT_SIZE (número decimal)
+   └─ Tamaño de lote fijo para modo autónomo
+   └─ Rango recomendado: 0.1 a 5.0 lotes
+   └─ Solo se usa si USE_DYNAMIC_LOT = false
+
+   Ejemplo:
+   DEFAULT_LOT_SIZE = 0.5   → Ejecuta 0.5 lotes
+   DEFAULT_LOT_SIZE = 1.0   → Ejecuta 1.0 lotes
+   DEFAULT_LOT_SIZE = 0.1   → Ejecuta 0.1 lotes (conservador)
+
+3. USE_DYNAMIC_LOT (true/false)
+   └─ true: Calcula lote dinámicamente basado en riesgo
+   └─ false: Usa DEFAULT_LOT_SIZE (lote fijo)
+
+   Ejemplo:
+   USE_DYNAMIC_LOT = true   → Riesgo del 2% × equity = tamaño dinámico
+   USE_DYNAMIC_LOT = false  → Siempre usa 0.5 lotes (default)
+
+================================================================================
+MODOS DE OPERACIÓN
+================================================================================
+
+MODO 1: LOTE DINÁMICO (recomendado)
+────────────────────────────────────────────────────────────────────
+
+Configuración:
+  USE_DYNAMIC_LOT = true
+  DEFAULT_LOT_SIZE = 0.5    (parámetro ignorado)
+
+Comportamiento:
+  1. IA calcula SL (stop loss) en pips
+  2. RiskManager calcula lote basado en:
+     - Equity actual
+     - Riesgo máximo (default: 2%)
+     - SL en pips
+  3. Ajusta lote según "position_size" de IA (0.0 a 1.0)
+  4. Ejecuta con lote dinámico
+
+Ventajas:
+  ✓ Se adapta al equity actual
+  ✓ Mantiene riesgo consistente
+  ✓ Si equity sube, aumenta lote automáticamente
+  ✓ Si equity baja, disminuye lote automáticamente
+
+Ejemplo:
+  Equity: $10,000
+  SL: 50 pips
+  Riesgo: 2% ($200)
+
+  Cálculo:
+    Pip value = $10 (EURUSD)
+    Lote = $200 / (50 pips × $10/lote) = 0.4 lotes
+
+  Resultado: Ejecuta 0.4 lotes automáticamente
+
+MODO 2: LOTE FIJO (simple)
+────────────────────────────────────────────────────────────────────
+
+Configuración:
+  USE_DYNAMIC_LOT = false
+  DEFAULT_LOT_SIZE = 0.5
+
+Comportamiento:
+  1. IA genera decisión (BUY/SELL/HOLD)
+  2. Si confidence >= 85%, ejecuta directamente
+  3. Siempre usa 0.5 lotes (configurado)
+
+Ventajas:
+  ✓ Predecible: siempre el mismo tamaño
+  ✓ Fácil de controlar
+  ✓ Bueno para principiantes
+  ✓ Sin cálculos dinámicos
+
+Desventajas:
+  ✗ No se adapta al equity
+  ✗ Riesgo inconsistente
+  ✗ Puede ser muy grande si equity sube
+  ✗ Puede ser muy pequeño si equity baja
+
+Ejemplo:
+  Equity: $10,000 (no importa)
+  DEFAULT_LOT_SIZE = 0.5
+
+  Resultado: Siempre ejecuta 0.5 lotes
+
+================================================================================
+FLUJO DE EJECUCIÓN
+================================================================================
+
+1. Usuario hace clic en "Analizar"
+   └─ IA genera análisis
+
+2. IA retorna decisión (BUY/SELL/HOLD) + confidence
+
+3. Sistema chequea condiciones para modo autónomo:
+   ├─ ¿ENABLED = true?
+   ├─ ¿Decision = BUY o SELL?
+   ├─ ¿Confidence >= AUTONOMOUS_CONFIDENCE_THRESHOLD?
+   └─ ¿No hay bloqueos (news shield, spread, pérdidas)?
+
+4. Si todas las condiciones son verdaderas:
+   ├─ Calcula tamaño de lote (dinámico o fijo)
+   ├─ Ejecuta trade automáticamente
+   └─ Muestra mensaje "Ejecutando..."
+
+5. Si alguna condición falla:
+   ├─ Muestra razón del rechazo
+   ├─ Ofrece botón de ejecución manual
+   └─ Usuario decide si ejecutar manualmente
+
+================================================================================
+VALIDACIONES DE SEGURIDAD
+================================================================================
+
+Antes de ejecutar automáticamente, el sistema verifica:
+
+1. NEWS SHIELD
+   └─ ¿Hay evento económico High Impact en los próximos 60 min?
+   └─ Si SÍ: bloquea ejecución automática
+
+2. SPREAD
+   └─ ¿El spread actual es mayor a MAX_SPREAD_POINTS (30)?
+   └─ Si SÍ: bloquea ejecución automática
+
+3. PÉRDIDAS DIARIAS
+   └─ ¿Ya perdió 3% del balance hoy?
+   └─ Si SÍ: bloquea ejecución automática
+
+4. POSICIÓN ABIERTA
+   └─ ¿Ya hay una posición abierta en ese símbolo?
+   └─ Si SÍ: bloquea ejecución automática (evita duplicados)
+
+5. CONFIANZA
+   └─ ¿Confidence >= 85% (configurado)?
+   └─ Si NO: bloquea ejecución automática
+
+Si alguna validación falla:
+  ├─ Se muestra el motivo en rojo
+  ├─ Se registra en logs (decision rechazada)
+  └─ Se ofrece opción manual
+
+================================================================================
+EJEMPLOS DE CONFIGURACIÓN
+================================================================================
+
+EJEMPLO 1: CONSERVADOR (lote fijo pequeño)
+────────────────────────────────────────────────────────────────────
+
+[AUTONOMOUS_MODE]
+ENABLED = true
+DEFAULT_LOT_SIZE = 0.1        # Lote muy pequeño
+USE_DYNAMIC_LOT = false       # Fijo
+
+Uso: Principiantes o pruebas
+Riesgo: Bajo
+Ganancia: Limitada
+
+EJEMPLO 2: BALANCEADO (lote dinámico)
+────────────────────────────────────────────────────────────────────
+
+[AUTONOMOUS_MODE]
+ENABLED = true
+DEFAULT_LOT_SIZE = 0.5        # No importa si dinámico
+USE_DYNAMIC_LOT = true        # Dinámico basado en riesgo
+
+Uso: Operadores experimentados
+Riesgo: Controlado (% del equity)
+Ganancia: Escala con equity
+
+EJEMPLO 3: AGRESIVO (lote fijo grande)
+────────────────────────────────────────────────────────────────────
+
+[AUTONOMOUS_MODE]
+ENABLED = true
+DEFAULT_LOT_SIZE = 2.0        # Lote grande
+USE_DYNAMIC_LOT = false       # Fijo
+
+Uso: Operadores avanzados con capital suficiente
+Riesgo: Alto
+Ganancia: Grande
+
+EJEMPLO 4: MODO MANUAL SOLAMENTE
+────────────────────────────────────────────────────────────────────
+
+[AUTONOMOUS_MODE]
+ENABLED = false               # Deshabilitado
+
+Uso: Control total del usuario
+Riesgo: Usuario decide
+Ganancia: Usuario decide
+
+================================================================================
+RECOMENDACIONES
+================================================================================
+
+PARA PRINCIPIANTES:
+  └─ USE_DYNAMIC_LOT = true (se adapta automáticamente)
+  └─ DEFAULT_LOT_SIZE = 0.1 (pequeño, por si no funciona)
+  └─ Observa 5-10 trades antes de aumentar
+
+PARA OPERADORES INTERMEDIOS:
+  └─ USE_DYNAMIC_LOT = true (recomendado)
+  └─ DEFAULT_LOT_SIZE = 0.5 (referencia si fuera fijo)
+  └─ Monitorea todos los días primero
+
+PARA OPERADORES AVANZADOS:
+  └─ USE_DYNAMIC_LOT = true (máximo control)
+  └─ DEFAULT_LOT_SIZE = 1.0+ (ajusta según capital)
+  └─ Usa trailing stops y gestión de riesgo
+
+REGLA DE ORO:
+  └─ Comienza siempre con lotes pequeños
+  └─ Aumenta lentamente (cada semana si va bien)
+  └─ No aumentes más de 50% a la vez
+  └─ Monitorea logs diariamente
+
+================================================================================
+LOGS Y DEBUGGING
+================================================================================
+
+Para ver qué está pasando con modo autónomo:
+
+1. Activa DEBUG_MODE = true en [DEBUG]
+
+2. Después de ejecutar análisis, revisa data/ibot.log
+
+3. Busca líneas tipo:
+   [2026-04-06 10:30:47] [DEBUG   ] Modo autónomo: Lote dinámico = 0.4
+   [2026-04-06 10:30:47] [DEBUG   ] Modo autónomo: Lote fijo = 0.5
+   [2026-04-06 10:30:48] [INFO    ] Operación ejecutada: Ticket 12345
+
+4. Esto te mostrará:
+   ├─ Si se ejecutó automáticamente
+   ├─ Qué tamaño de lote usó
+   ├─ Si fue dinámico o fijo
+   └─ Resultado (ticket creado)
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+"La IA sugiere BUY pero no ejecuta automáticamente"
+
+Causas posibles:
+  1. ENABLED = false
+     └─ Solución: Cambiar a true en config.ini
+
+  2. Confidence < 85%
+     └─ Solución: Esperar a que IA tenga más confianza
+
+  3. News shield bloqueando
+     └─ Solución: Esperar a que pase el evento económico
+
+  4. Spread muy alto
+     └─ Solución: Cambiar a mejor horario de sesión
+
+  5. Pérdida diaria excedida
+     └─ Solución: Esperar al día siguiente
+
+"El lote es muy grande/pequeño"
+
+Si USE_DYNAMIC_LOT = true:
+  └─ Revisa el equity: lote se calcula como % del equity
+  └─ Si equity baja, lote baja automáticamente
+  └─ Es correcto que varíe
+
+Si USE_DYNAMIC_LOT = false:
+  └─ Cambiar DEFAULT_LOT_SIZE en config.ini
+  └─ Aumentar: riesgo más capital
+  └─ Disminuir: riesgo menos capital
+
+================================================================================
+CAMBIOS RECIENTES
+================================================================================
+
+Agregado en 2026-04-06:
+  ✓ Sección [AUTONOMOUS_MODE] en config.ini
+  ✓ Parámetro DEFAULT_LOT_SIZE
+  ✓ Parámetro USE_DYNAMIC_LOT
+  ✓ Validación y carga en ConfigLoader
+  ✓ Lógica de cálculo en app.py
+  ✓ Logging de decisiones de lote
+  ✓ Esta documentación
+
+================================================================================
+PROXIMOS PASOS
+================================================================================
+
+1. Configurar los parámetros en config.ini
+2. Activar DEBUG_MODE para monitorear
+3. Probar con lotes pequeños primero
+4. Revisar logs después de cada ejecución
+5. Aumentar lotes gradualmente si va bien
+
+================================================================================
+SOPORTE
+================================================================================
+
+Para problemas:
+  - Email: support@ibot-trading.com
+  - Incluye: config.ini (sin credenciales), últimos logs
+  - Describe: qué pasó, qué esperabas
+
+Para más info:
+  - ANALISIS_NOTICIAS_IA.txt
+  - SISTEMA_DEBUG_LOGGING.txt
+  - CONFIGURAR_ANTHROPIC_API_KEY.txt
+
+================================================================================

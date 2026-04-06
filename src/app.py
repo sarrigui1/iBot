@@ -414,17 +414,26 @@ with tab_dash:
                         )
                         st.session_state[auto_fired] = True  # no reintentar en este ciclo
                     else:
-                        pip_val = service.get_pip_value_per_lot(selected_symbol)
-                        lot = RiskManager.calculate_lot_size(
-                            equity=acc.equity,
-                            risk_pct=RiskManager.DEFAULT_RISK_PCT,
-                            sl_pips=ai_res.get("sl_pips", 20),
-                            pip_value_per_lot=pip_val,
-                        )
-                        lot = max(
-                            RiskManager.MIN_LOT,
-                            round(lot * float(ai_res.get("position_size", 1.0)), 2),
-                        )
+                        # Calcular tamaño de lote para modo autónomo
+                        if config.autonomous_use_dynamic_lot:
+                            # Usar cálculo dinámico basado en riesgo
+                            pip_val = service.get_pip_value_per_lot(selected_symbol)
+                            lot = RiskManager.calculate_lot_size(
+                                equity=acc.equity,
+                                risk_pct=RiskManager.DEFAULT_RISK_PCT,
+                                sl_pips=ai_res.get("sl_pips", 20),
+                                pip_value_per_lot=pip_val,
+                            )
+                            lot = max(
+                                RiskManager.MIN_LOT,
+                                round(lot * float(ai_res.get("position_size", 1.0)), 2),
+                            )
+                            logger.debug(f"Modo autónomo: Lote dinámico = {lot} (basado en riesgo)")
+                        else:
+                            # Usar lote fijo configurado
+                            lot = config.autonomous_default_lot_size
+                            logger.debug(f"Modo autónomo: Lote fijo = {lot} (desde config)")
+
                         st.warning(
                             f"{t['auto_banner']} — {t['confidence']}: {confidence*100:.0f}% "
                             f"≥ {AUTONOMOUS_CONFIDENCE_THRESHOLD*100:.0f}%\n\n"

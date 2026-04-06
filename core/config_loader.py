@@ -47,6 +47,11 @@ class ConfigLoader:
                 "MAX_DAILY_LOSS_PCT",
                 "MAX_SPREAD_POINTS",
             ],
+            "AUTONOMOUS_MODE": [
+                "ENABLED",
+                "DEFAULT_LOT_SIZE",
+                "USE_DYNAMIC_LOT",
+            ],
             "TIMEZONE": ["LOCAL_UTC_OFFSET", "LOCAL_TZ_NAME"],
             "REFRESH_TIMING": ["DEFAULT_REFRESH_SECONDS", "AI_MIN_INTERVAL_MINS"],
             "NEWS_CONFIG": ["NEWS_SHIELD_MINUTES", "NEWS_CACHE_TTL"],
@@ -142,6 +147,19 @@ class ConfigLoader:
                 "ANTHROPIC_API_KEY no está configurada. "
                 "Edita config.ini sección [API_KEYS] y agrega tu API key de Anthropic."
             )
+
+        # AUTONOMOUS_MODE
+        autonomous_str = self.parser.get("AUTONOMOUS_MODE", "ENABLED").strip().lower()
+        self.autonomous_enabled: bool = autonomous_str in ["true", "1", "yes", "on"]
+
+        self.autonomous_default_lot_size: float = self.parser.getfloat(
+            "AUTONOMOUS_MODE", "DEFAULT_LOT_SIZE"
+        )
+        dynamic_str = self.parser.get("AUTONOMOUS_MODE", "USE_DYNAMIC_LOT").strip().lower()
+        self.autonomous_use_dynamic_lot: bool = dynamic_str in ["true", "1", "yes", "on"]
+
+        if self.autonomous_default_lot_size <= 0:
+            raise ValueError("DEFAULT_LOT_SIZE debe ser mayor a 0")
 
         # DEBUG
         debug_str = self.parser.get("DEBUG", "DEBUG_MODE").strip().lower()
