@@ -1,0 +1,311 @@
+================================================================================
+GUIA DE USO - INSTALADOR AVANZADO DE IBOT TRADING
+================================================================================
+Rama: iBot-Installer
+Fecha: 2026-04-05
+Estado: ✓ Completamente funcional
+
+================================================================================
+RESUMEN
+================================================================================
+
+El instalador avanzado despliega iBot Trading de forma segura:
+
+✓ Solo archivos necesarios (código compilado + config + docs)
+✓ Código fuente protegido (compilado a bytecode .pyc)
+✓ Logs detallados de cada paso
+✓ Instalación automática de dependencias
+✓ Generación de README de primeros pasos
+✓ Launcher automático para Windows
+
+================================================================================
+COMO USAR EL INSTALADOR
+================================================================================
+
+PASO 1: Preparar la instalación
+────────────────────────────────────────────────────────────────────
+
+Necesitas:
+- Python 3.8 o superior instalado
+- Terminal/CMD con acceso a python
+- Carpeta de destino vacía (ej: C:\iBot_Trading)
+
+PASO 2: Ejecutar el instalador
+────────────────────────────────────────────────────────────────────
+
+Abre CMD o PowerShell y ejecuta:
+
+  cd c:\ruta\al\proyecto
+  python tools/advanced_installer.py "C:\iBot_Trading"
+
+Donde "C:\iBot_Trading" es la carpeta donde instalará la app.
+
+PASO 3: Ver el progreso
+────────────────────────────────────────────────────────────────────
+
+El instalador mostrará en consola:
+
+  [2026-04-05 10:30:45] [INFO   ] Verificando versión de Python...
+  [2026-04-05 10:30:45] [SUCCESS] Python 3.11.0 - OK
+  [2026-04-05 10:30:46] [INFO   ] Creando estructura de directorios...
+  [2026-04-05 10:30:46] [SUCCESS] Directorios creados: 6 carpetas
+  [2026-04-05 10:30:47] [INFO   ] Compilando código fuente a bytecode...
+  [2026-04-05 10:30:50] [SUCCESS] Compilados 15 archivos a bytecode
+  ... más pasos ...
+
+PASO 4: Instalación completada
+────────────────────────────────────────────────────────────────────
+
+Al finalizar verás:
+
+  ================================================================================
+  INSTALACION COMPLETADA: 10/10 pasos exitosos
+  ================================================================================
+
+  Tiempo total: 45.3 segundos
+
+  Próximos pasos:
+    1. Edita: C:\iBot_Trading\config\config.ini
+    2. Haz doble clic en: C:\iBot_Trading\launcher.bat
+
+  Documentación: Revisa C:\iBot_Trading\PRIMEROS_PASOS.txt
+  Logs: C:\iBot_Trading\installation.log
+
+================================================================================
+QUE HACE CADA PASO
+================================================================================
+
+1. VERIFICAR PYTHON
+   └─ Comprueba que tienes Python 3.8+
+   └─ Si no: Instala Python desde python.org
+
+2. CREAR DIRECTORIOS
+   └─ Crea carpetas: src/, core/, config/, data/, docs/, tools/
+
+3. COMPILAR CÓDIGO
+   └─ Convierte .py a bytecode .pyc
+   └─ Protege el código fuente
+   └─ El usuario NO puede ver el código
+
+4. COPIAR CONFIGURACION
+   └─ config.ini plantilla
+   └─ ESTO es lo único que edita el usuario
+
+5. COPIAR DOCUMENTACION
+   └─ README, guías de uso
+   └─ Información de licencias
+
+6. COPIAR DEPENDENCIAS
+   └─ requirements.txt con librerías necesarias
+
+7. INSTALAR LIBRERIAS
+   └─ pip install -r requirements.txt
+   └─ Descarga: streamlit, MetaTrader5, anthropic, etc.
+
+8. CREAR LAUNCHER
+   └─ launcher.bat para ejecutar fácilmente desde Windows
+   └─ Solo doble clic para iniciar
+
+9. GENERAR README
+   └─ PRIMEROS_PASOS.txt con instrucciones post-instalación
+   └─ El usuario abre esto primero
+
+10. CREAR RESUMEN
+    └─ installation_summary.json con metadata
+    └─ Fecha, duración, versión Python
+
+================================================================================
+ARCHIVOS GENERADOS
+================================================================================
+
+Después de la instalación, en C:\iBot_Trading verás:
+
+RAIZ:
+├── launcher.bat ..................... Doble clic para ejecutar
+├── app_main.py ...................... Punto de entrada
+├── requirements.txt ................. Dependencias instaladas
+├── installation.log ................. Logs detallados
+├── installation_summary.json ........ Metadata de instalación
+├── PRIMEROS_PASOS.txt ............... Guía post-instalación (LEER ESTO)
+│
+├── config/
+│   └── config.ini ................... EDITABLE: credenciales MT5
+│
+├── src/
+│   ├── app.py ....................... Compilado (.pyc)
+│   ├── config.py .................... Compilado (.pyc)
+│   ├── anthropic_service.py ......... Compilado (.pyc)
+│   ├── mt5_service.py ............... Compilado (.pyc)
+│   ├── smc_service.py ............... Compilado (.pyc)
+│   ├── indicators_service.py ........ Compilado (.pyc)
+│   ├── ui_components.py ............ Compilado (.pyc)
+│   ├── risk_manager.py .............. Compilado (.pyc)
+│   ├── logger_service.py ............ Compilado (.pyc)
+│   ├── feedback_service.py .......... Compilado (.pyc)
+│   ├── news_service.py .............. Compilado (.pyc)
+│   ├── i18n.py ...................... Compilado (.pyc)
+│   └── __pycache__/ ................. Bytecode compilado
+│
+├── core/
+│   ├── config_loader.py ............. Compilado (.pyc)
+│   ├── license_manager.py ........... Compilado (.pyc)
+│   └── __pycache__/ ................. Bytecode compilado
+│
+├── data/
+│   ├── license_cache.json ........... Auto-generado en runtime
+│   ├── trading_journal.csv .......... Auto-generado en runtime
+│   └── strategy_memory.json ......... Auto-generado en runtime
+│
+└── docs/
+    └── README.txt ................... Documentación
+
+NOTA: Los archivos .py ORIGINALES NO se distribuyen (protegidos)
+
+================================================================================
+COMO USAR DESPUES DE INSTALAR
+================================================================================
+
+1. Abre el archivo que te indica:
+   C:\iBot_Trading\PRIMEROS_PASOS.txt
+
+2. Edita config.ini con tus credenciales MT5:
+   C:\iBot_Trading\config\config.ini
+
+3. Haz doble clic en launcher.bat:
+   C:\iBot_Trading\launcher.bat
+
+4. Verifica que la licencia es válida (verás en la app)
+
+5. ¡Listo! Empieza a usar iBot Trading
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Error: "Python not found"
+  └─ Instala Python desde: python.org
+  └─ Asegúrate de seleccionar "Add Python to PATH"
+
+Error: "Permission denied" en C:\iBot_Trading
+  └─ Usa una carpeta donde tienes permisos (ej: Documents, Desktop)
+  └─ O ejecuta CMD como administrador
+
+Error: "pip command not found"
+  └─ Reinstala Python con "Add Python to PATH"
+  └─ O ejecuta: python -m pip install --upgrade pip
+
+Error: "ModuleNotFoundError: No module named 'streamlit'"
+  └─ Ejecuta manualmente: pip install -r requirements.txt
+  └─ Espera a que termine
+
+La app no abre en el navegador
+  └─ Revisa el archivo: installation.log
+  └─ Busca mensajes de ERROR
+  └─ Ejecuta desde terminal: streamlit run app_main.py
+
+================================================================================
+CARACTERISTICAS DE SEGURIDAD
+================================================================================
+
+✓ Código compilado a bytecode
+  └─ El usuario no puede ver el código fuente (.py)
+  └─ Solo ve bytecode compilado (.pyc)
+
+✓ Configuración aislada
+  └─ Solo config.ini es editable
+  └─ Resto del código es inmutable
+
+✓ Sin credenciales en el código
+  └─ Credenciales MT5 en config.ini (usuario)
+  └─ Credenciales de desarrollo nunca distribuidas
+
+✓ Validación de licencias en servidor
+  └─ Google Apps Script endpoint privado
+  └─ No se expone Google Sheet
+
+✓ Caché offline
+  └─ Funciona 7 días sin internet
+  └─ Después necesita validar en servidor
+
+================================================================================
+DISTRIBUCION A CLIENTES
+================================================================================
+
+Para vender/distribuir iBot:
+
+1. Ejecutar el instalador en tu máquina:
+   python tools/advanced_installer.py "C:\dist\iBot_Trading"
+
+2. Comprimir la carpeta:
+   C:\dist\iBot_Trading → iBot_Trading.zip
+
+3. Distribuir iBot_Trading.zip al cliente
+
+4. Cliente ejecuta:
+   - Descomprime iBot_Trading.zip
+   - Ejecuta launcher.bat
+   - Edita config.ini con sus credenciales
+   - ¡Listo!
+
+El cliente NO necesita Python (solo si quiere ejecutar desde terminal)
+
+================================================================================
+COMPILAR A EXE (OPCIONAL)
+================================================================================
+
+Para crear un ejecutable instalador (.exe):
+
+  pyinstaller --onefile --windowed ^
+    --add-data "src:src" ^
+    --add-data "core:core" ^
+    --add-data "config:config" ^
+    --add-data "docs:docs" ^
+    tools/advanced_installer.py
+
+Esto genera: dist/advanced_installer.exe
+
+Cliente solo hace doble clic en el .exe y listo.
+
+================================================================================
+RAMAS GIT RELACIONADAS
+================================================================================
+
+- main ..................... Versión estable con licencias
+- iBot-licence ............. Rama para mantener estable de licencias
+- iBot-Installer ........... Rama para cambios del instalador (actual)
+
+Para cambiar de rama:
+  git checkout iBot-licence       (versión estable de licencias)
+  git checkout iBot-Installer     (trabajo en instalador)
+
+================================================================================
+ESTADO Y PROXIMOS PASOS
+================================================================================
+
+✓ Instalador básico funcional
+✓ Protección de código compilado
+✓ Logs detallados
+✓ README de primeros pasos
+✓ Launcher automático
+
+Próximos pasos:
+  [ ] Compilar a .exe con PyInstaller
+  [ ] Crear página de descarga
+  [ ] Integración con Stripe (pagos)
+  [ ] Dashboard de clientes
+  [ ] Automatizar envío de licencias
+
+================================================================================
+CONTACTO Y SOPORTE
+================================================================================
+
+Para soporte o preguntas:
+  email: support@ibot-trading.com
+  docs: Revisar los documentos en la carpeta docs/
+
+Documentación técnica:
+  - SISTEMA_GESTION_LICENCIAS.txt
+  - VALIDACION_LICENCIA_SEGURA.txt
+  - docs/TECNICA/DOCUMENTO_TECNICO_IBOT.md
+
+================================================================================
