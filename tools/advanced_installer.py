@@ -110,6 +110,7 @@ class AdvancedInstaller:
             ("src/news_service.py", "src"),
             ("src/i18n.py", "src"),
             ("src/debug_logger.py", "src"),
+            ("src/activity_logger.py", "src"),
             # core/
             ("core/config_loader.py", "core"),
             ("core/license_manager.py", "core"),
