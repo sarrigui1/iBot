@@ -1,0 +1,395 @@
+================================================================================
+REGISTRO DE ACTIVIDADES (ACTIVITY LOG)
+================================================================================
+Fecha: 2026-04-06
+Versión: 1.0
+
+================================================================================
+RESUMEN
+================================================================================
+
+El Activity Log registra TODAS las acciones del usuario en la UI:
+
+✓ Análisis ejecutados
+✓ Trades ejecutados (automático o manual)
+✓ Cambios de configuración
+✓ Cambios de modo (autónomo, idioma, etc.)
+✓ Errores ocurridos
+✓ Eventos importantes del sistema
+
+Almacenamiento: data/activity_log.jsonl (JSON Lines format)
+Visualización: Sección expandible en la pestaña principal
+
+================================================================================
+TIPOS DE ACTIVIDADES REGISTRADAS
+================================================================================
+
+1. ANÁLISIS
+   ├─ ANALYSIS_STARTED: Usuario inicia análisis
+   └─ ANALYSIS_EXECUTED: IA completa análisis (con decisión y confianza)
+
+2. TRADES
+   ├─ TRADE_EXECUTED: Trade ejecutado (automático o manual)
+   └─ Contiene: dirección, tamaño de lote, SL, TP, tipo
+
+3. CONFIGURACIÓN
+   ├─ CONFIG_CHANGED: Usuario cambia parámetro en config.ini
+   └─ Contiene: sección, parámetro, valor anterior, valor nuevo
+
+   ├─ MODE_CHANGED: Usuario activa/desactiva modo autónomo
+   └─ Contiene: tipo de modo, habilitado/deshabilitado
+
+4. ERRORES
+   └─ ERROR_OCCURRED: Cualquier error en la aplicación
+       ├─ Contiene: tipo de error, mensaje, contexto
+       └─ Status: "failed"
+
+5. SISTEMA
+   ├─ MT5_CONNECTED: Conexión a MetaTrader5
+   ├─ MT5_DISCONNECTED: Desconexión de MT5
+   └─ LICENSE_VALIDATED: Validación de licencia completada
+
+================================================================================
+VISUALIZACIÓN EN LA UI
+================================================================================
+
+Ubicación: Pestaña principal, sección "📊 Activity Log" (expandible)
+
+Componentes:
+────────────────────────────────────────────────────────────────────
+
+1. ESTADÍSTICAS RÁPIDAS
+   ├─ 📋 Total: Total de actividades registradas
+   ├─ 📈 Análisis: Número de análisis ejecutados
+   ├─ 💰 Trades: Número de trades ejecutados
+   ├─ ⚙️ Config: Cambios de configuración realizados
+   └─ ❌ Errores: Errores ocurridos
+
+   Ejemplo:
+   📋 Total: 42 | 📈 Análisis: 15 | 💰 Trades: 8 | ⚙️ Config: 3 | ❌ Errores: 0
+
+2. FILTROS
+   ├─ Tipo: Todas, Análisis, Trades, Configuración, Errores
+   └─ Límite: Mostrar 5-100 últimas actividades
+
+3. LISTA DE ACTIVIDADES
+   ├─ Timestamp: [HH:MM:SS]
+   ├─ Emoji: Representa el tipo de actividad
+   ├─ Mensaje: Descripción legible
+   └─ Color: Verde (éxito), Rojo (error), Amarillo (advertencia)
+
+   Ejemplo:
+   ✅ [10:30:45] 📊 Análisis: BUY (conf: 87%) | EURUSD
+   ✅ [10:30:47] 💰 Trade AUTO: BUY 0.5 lotes | EURUSD
+   ✅ [10:30:48] ⚙️ Config: AUTONOMOUS_MODE → true
+   ❌ [10:31:00] ❌ Error: ConnectionError
+
+================================================================================
+ARCHIVO DE ALMACENAMIENTO
+================================================================================
+
+Ubicación: data/activity_log.jsonl
+
+Formato: JSON Lines (una línea JSON por evento)
+
+Estructura de cada línea:
+────────────────────────────────────────────────────────────────────
+
+{
+  "timestamp": "2026-04-06T10:30:45.123456",
+  "action": "ANALYSIS_EXECUTED",
+  "category": "trading",
+  "status": "success",
+  "symbol": "EURUSD",
+  "details": {
+    "confidence": 0.87,
+    "decision": "BUY"
+  }
+}
+
+Campos principales:
+  - timestamp: ISO format datetime
+  - action: Tipo de acción realizada
+  - category: Categoría (trading, config, system, error)
+  - status: success, failed, warning, info
+  - symbol: Símbolo si es relevante (ej: EURUSD)
+  - details: Diccionario con información adicional
+
+Rotación automática:
+  └─ Si alcanza 10,000 líneas, se renombra a:
+     data/activity_log_20260406_103045.jsonl
+     y se crea uno nuevo
+
+================================================================================
+CASOS DE USO
+================================================================================
+
+1. AUDITORÍA
+   ├─ Ver qué hizo el usuario cada día
+   ├─ Revisar cambios de configuración
+   └─ Verificar autorización de trades automáticos
+
+2. DEBUGGING
+   ├─ Investigar errores que ocurrieron
+   ├─ Ver secuencia de eventos antes del error
+   └─ Entender qué causó problemas
+
+3. ANÁLISIS DE DESEMPEÑO
+   ├─ Contar trades exitosos vs fallidos
+   ├─ Ver patrones de decisiones de IA
+   └─ Identificar configuraciones que funcionaron mejor
+
+4. CAPACITACIÓN
+   ├─ Nuevo usuario ve su propio historial de acciones
+   ├─ Entrenador revisa decisiones del usuario
+   └─ Analizar evolución de configuraciones
+
+================================================================================
+MÉTODOS DISPONIBLES EN ActivityLogger
+================================================================================
+
+Métodos para registrar:
+
+1. log(action, category, details, status, user_symbol)
+   └─ Método genérico para registrar cualquier actividad
+
+2. log_analysis(symbol, confidence, decision)
+   └─ Registra ejecución de análisis
+
+   Ejemplo:
+   ActivityLogger.log_analysis(
+       symbol="EURUSD",
+       confidence=0.87,
+       decision="BUY"
+   )
+
+3. log_trade(symbol, direction, lot_size, sl_pips, tp_pips, ticket, auto)
+   └─ Registra ejecución de trade
+
+   Ejemplo:
+   ActivityLogger.log_trade(
+       symbol="EURUSD",
+       direction="BUY",
+       lot_size=0.5,
+       sl_pips=50,
+       tp_pips=125,
+       ticket=12345,
+       auto=True
+   )
+
+4. log_config_change(section, param, old_value, new_value)
+   └─ Registra cambio de configuración
+
+   Ejemplo:
+   ActivityLogger.log_config_change(
+       section="AUTONOMOUS_MODE",
+       param="DEFAULT_LOT_SIZE",
+       old_value=0.5,
+       new_value=1.0
+   )
+
+5. log_error(error_type, error_message, context)
+   └─ Registra error
+
+   Ejemplo:
+   ActivityLogger.log_error(
+       error_type="APIError",
+       error_message="Connection timeout",
+       context="analyzing EURUSD"
+   )
+
+Métodos para consultar:
+
+1. get_recent_activities(limit=100)
+   └─ Retorna últimas N actividades
+
+2. get_activities_by_action(action, limit=50)
+   └─ Retorna actividades filtradas por acción
+
+3. get_activities_by_symbol(symbol, limit=50)
+   └─ Retorna actividades filtradas por símbolo
+
+4. get_stats()
+   └─ Retorna estadísticas resumidas
+
+   Retorna:
+   {
+     "total_activities": 42,
+     "trades_executed": 8,
+     "analyses_run": 15,
+     "errors": 0,
+     "config_changes": 3
+   }
+
+================================================================================
+FILTRADO Y BÚSQUEDA EN LA UI
+================================================================================
+
+Opción 1: TODAS las actividades
+────────────────────────────────────────────────────────────────────
+Mostrar: Últimas 20, 50, 100 actividades
+Útil para: Ver qué hizo el usuario hoy
+
+Opción 2: Solo ANÁLISIS
+────────────────────────────────────────────────────────────────────
+Mostrar: Decisiones de IA con confianza
+Útil para: Revisar patrones de análisis
+
+Opción 3: Solo TRADES
+────────────────────────────────────────────────────────────────────
+Mostrar: Trades ejecutados (automático/manual)
+Útil para: Ver historial de ejecuciones
+
+Opción 4: CONFIGURACIÓN
+────────────────────────────────────────────────────────────────────
+Mostrar: Cambios en parámetros
+Útil para: Auditar cambios de configuración
+
+Opción 5: ERRORES
+────────────────────────────────────────────────────────────────────
+Mostrar: Solo errores ocurridos
+Útil para: Debugging y troubleshooting
+
+================================================================================
+EJEMPLOS DE REGISTRO
+================================================================================
+
+EJEMPLO 1: Análisis + Trade Automático
+────────────────────────────────────────────────────────────────────
+
+[10:30:45] 🔍 Análisis: Iniciado | EURUSD
+[10:30:47] 📊 Análisis: BUY (conf: 87%) | EURUSD
+[10:30:48] 💰 Trade AUTO: BUY 0.5 lotes | EURUSD
+
+Interpretación:
+1. Usuario hizo clic en "Analizar"
+2. IA analizó EURUSD y sugirió BUY con 87% confianza
+3. Modo autónomo ejecutó automáticamente 0.5 lotes
+
+EJEMPLO 2: Cambio de Configuración
+────────────────────────────────────────────────────────────────────
+
+[10:32:00] ⚙️ Config: AUTONOMOUS_MODE → true
+[10:32:05] ⚙️ Config: DEFAULT_LOT_SIZE → 1.0
+[10:32:10] 🔀 Mode Changed: autonomous_mode enabled
+
+Interpretación:
+1. Usuario habilitó modo autónomo
+2. Cambió tamaño de lote de 0.5 a 1.0
+3. Sistema registró el cambio de modo
+
+EJEMPLO 3: Error y Recuperación
+────────────────────────────────────────────────────────────────────
+
+[10:35:00] ❌ Error: ConnectionError (analyzing EURUSD)
+[10:35:02] 📊 Análisis: HOLD (conf: 45%) | EURUSD
+[10:35:03] ℹ️ Info: Used cached data due to connection timeout
+
+Interpretación:
+1. Hubo error de conexión durante análisis
+2. Sistema usó datos en caché
+3. IA generó decisión HOLD con baja confianza (45%)
+
+================================================================================
+PRIVACIDAD Y SEGURIDAD
+================================================================================
+
+Datos almacenados:
+  ✓ Timestamp de acciones
+  ✓ Tipos de acciones
+  ✓ Parámetros de configuración
+  ✓ Símbolos analizados
+  ✓ Decisiones de la IA
+  ✗ NO se almacenan credenciales
+  ✗ NO se almacenan contraseñas
+  ✗ NO se almacenan API keys
+
+Archivo activity_log.jsonl:
+  └─ Almacenado localmente (NO se envía a internet)
+  └─ Solo el usuario puede acceder
+  └─ Se puede eliminar manualmente si se desea
+
+Consideraciones:
+  ├─ Útil para auditoría interna
+  ├─ No compartir si contiene información sensible
+  └─ Rotación automática evita archivos muy grandes
+
+================================================================================
+PRÓXIMAS MEJORAS
+================================================================================
+
+1. Exportación de logs
+   └─ Descargar activity_log como CSV/JSON
+
+2. Gráficos de actividad
+   └─ Tendencias de trades, análisis por hora
+
+3. Alertas
+   └─ Notificar si ocurren demasiados errores
+
+4. Integración con IA
+   └─ IA aprende del historial de actividades
+
+5. Comparación de períodos
+   └─ Comparar actividades de hoy vs semana pasada
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+"No veo ninguna actividad en el log"
+  └─ Posibles causas:
+     1. Acabas de iniciar la app (no hay actividades aún)
+     2. El archivo activity_log.jsonl no existe (se crea al registrar)
+     3. Necesitas hacer alguna acción (análisis, trade, etc.)
+  └─ Solución: Ejecuta un análisis y vuelve a revisar
+
+"El Activity Log muestra actividades de hace días"
+  └─ Esto es correcto: almacena historial de todas las sesiones
+  └─ Usa el filtro "Mostrar últimas" para limitar la cantidad
+
+"Quiero limpiar el Activity Log"
+  └─ Opción 1: Eliminasivamente data/activity_log.jsonl
+     └─ Se creará uno nuevo la próxima vez que hagas una acción
+  └─ Opción 2: Espera a que llegue a 10,000 líneas
+     └─ Se rotará automáticamente
+
+"Las actividades están vacías después de un análisis"
+  └─ Posible causa: ActivityLogger no está importado
+  └─ Solución: Verifica que app.py tenga:
+              from activity_logger import ActivityLogger
+
+================================================================================
+COMANDOS ÚTILES
+================================================================================
+
+Ver últimas actividades (desde terminal):
+  python -c "from src.activity_logger import ActivityLogger;
+             for a in ActivityLogger.get_recent_activities(10):
+             print(a['timestamp'], a['action'])"
+
+Obtener estadísticas:
+  python -c "from src.activity_logger import ActivityLogger;
+             import json;
+             print(json.dumps(ActivityLogger.get_stats(), indent=2))"
+
+Filtrar por símbolo EURUSD:
+  python -c "from src.activity_logger import ActivityLogger;
+             for a in ActivityLogger.get_activities_by_symbol('EURUSD'):
+             print(a['timestamp'], a['action'])"
+
+================================================================================
+SOPORTE
+================================================================================
+
+Para problemas con Activity Log:
+  - Email: support@ibot-trading.com
+  - Incluye: Últimas 10 líneas de data/activity_log.jsonl
+  - Describe: Qué esperabas ver, qué viste en su lugar
+
+Para análisis del Activity Log:
+  - Puedes descargar el archivo y analizarlo en Excel o Python
+  - Formato JSONL: fácil de parsear
+  - Archivo de rotación: puedes revisar históricos
+
+================================================================================

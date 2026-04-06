@@ -39,7 +39,7 @@ class ConfigLoader:
     def _validate(self):
         """Valida que todas las secciones y campos requeridos existan."""
         required_sections = {
-            "LICENSE": ["LICENSE_KEY", "GOOGLE_SHEET_ID"],
+            "LICENSE": ["LICENSE_KEY"],
             "MT5_ACCOUNT": ["MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER"],
             "TRADING_PARAMETERS": [
                 "SYMBOLS",
@@ -73,7 +73,6 @@ class ConfigLoader:
 
         # LICENSE
         self.license_key: str = self.parser.get("LICENSE", "LICENSE_KEY").strip()
-        self.google_sheet_id: str = self.parser.get("LICENSE", "GOOGLE_SHEET_ID").strip()
 
         if not self.license_key:
             raise ValueError("LICENSE_KEY no puede estar vacío en config.ini")

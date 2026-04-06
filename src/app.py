@@ -4,6 +4,7 @@ import streamlit as st
 import MetaTrader5 as mt5
 import pandas as pd
 import time
+from datetime import datetime
 
 # Agregar raíz y src del proyecto al path
 _app_dir = os.path.dirname(os.path.abspath(__file__))  # src/
@@ -101,6 +102,7 @@ from ui_components import (
 from logger_service import LoggerService
 from feedback_service import FeedbackService
 from news_service import NewsService
+from activity_logger import ActivityLogger
 from config import (
     SYMBOLS,
     SYMBOL_CURRENCIES,
@@ -303,6 +305,11 @@ with tab_dash:
                          disabled=not _can_analyze, help=_btn_help):
                 with st.spinner(t["analyzing_spinner"]):
                     try:
+                        ActivityLogger.log(
+                            action="ANALYSIS_STARTED",
+                            category="trading",
+                            user_symbol=selected_symbol
+                        )
                         _history       = LoggerService.get_history()
                         _spread        = service.get_spread(selected_symbol)
                         _session_loss  = RiskManager.get_session_loss_count(_history)
@@ -367,6 +374,13 @@ with tab_dash:
                         st.session_state["last_smc_state"]            = smc_state
                         st.session_state["last_ai_res"]               = ai_res
                         st.session_state[auto_fired]                  = False
+
+                        # Registrar resultado del análisis
+                        ActivityLogger.log_analysis(
+                            symbol=selected_symbol,
+                            confidence=ai_res.get("confidence", 0),
+                            decision=ai_res.get("decision", "HOLD")
+                        )
                     except Exception as e:
                         st.error(f"{t['ai_error']}: {e}")
 
@@ -446,6 +460,17 @@ with tab_dash:
                             accepted=True,
                         )
                         st.session_state[auto_fired] = True
+
+                        # Registrar ejecución automática
+                        ActivityLogger.log_trade(
+                            symbol=selected_symbol,
+                            direction=decision,
+                            lot_size=lot,
+                            sl_pips=ai_res.get("sl_pips", 0),
+                            tp_pips=ai_res.get("tp_pips", 0),
+                            auto=True
+                        )
+
                         handle_trade(
                             decision, selected_symbol, lot,
                             ai_res["sl_pips"], ai_res["tp_pips"], auto=True,
@@ -703,18 +728,113 @@ with tab_journal:
 
 # --- REGISTRO DE ACTIVIDAD ---
 st.divider()
-with st.expander(t["activity_log"], expanded=False):
-    tn = time.strftime("%H:%M:%S")
-    st.write(f"[{tn}] {t['cycle_started']}")
-    st.write(f"[{tn}] {t['connected_to']} **{selected_symbol}**")
-    if run_ai:
-        mode_tag = f"{'🤖 AUTO' if autonomous_mode else '👤 MANUAL'}"
-        st.write(
-            f"[{tn}] {t['ai_active_log']} "
-            f"{AUTONOMOUS_CONFIDENCE_THRESHOLD*100:.0f}% | {mode_tag}"
+with st.expander(t.get("activity_log", "📊 Activity Log"), expanded=False):
+    # Estadísticas de actividad
+    stats = ActivityLogger.get_stats()
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("📋 Total", stats.get("total_activities", 0))
+    c2.metric("📈 Análisis", stats.get("analyses_run", 0))
+    c3.metric("💰 Trades", stats.get("trades_executed", 0))
+    c4.metric("⚙️ Config", stats.get("config_changes", 0))
+    c5.metric("❌ Errores", stats.get("errors", 0))
+
+    st.divider()
+
+    # Selector de actividades a mostrar
+    col1, col2 = st.columns(2)
+    with col1:
+        filter_type = st.selectbox(
+            "Filtrar por tipo:",
+            ["Todas", "Análisis", "Trades", "Configuración", "Errores"],
+            key="activity_filter",
         )
+
+    with col2:
+        limit = st.slider("Mostrar últimas:", 5, 100, 20, key="activity_limit")
+
+    # Obtener actividades filtradas
+    if filter_type == "Todas":
+        activities = ActivityLogger.get_recent_activities(limit=limit)
+    elif filter_type == "Análisis":
+        activities = ActivityLogger.get_activities_by_action("ANALYSIS_EXECUTED", limit=limit)
+    elif filter_type == "Trades":
+        activities = ActivityLogger.get_activities_by_action("TRADE_EXECUTED", limit=limit)
+    elif filter_type == "Configuración":
+        activities = ActivityLogger.get_activities_by_action("CONFIG_CHANGED", limit=limit)
+    elif filter_type == "Errores":
+        activities = ActivityLogger.get_activities_by_action("ERROR_OCCURRED", limit=limit)
     else:
-        st.write(f"[{tn}] {t['ai_idle_log']}")
+        activities = ActivityLogger.get_recent_activities(limit=limit)
+
+    # Mostrar actividades
+    if activities:
+        for activity in activities:
+            timestamp = activity.get("timestamp", "")
+            action = activity.get("action", "UNKNOWN")
+            symbol = activity.get("symbol", "")
+            status = activity.get("status", "info")
+            details = activity.get("details", {})
+
+            # Formatear timestamp
+            try:
+                dt = datetime.fromisoformat(timestamp)
+                time_str = dt.strftime("%H:%M:%S")
+            except:
+                time_str = timestamp[-8:] if len(timestamp) >= 8 else "??:??:??"
+
+            # Seleccionar emoji y color según acción
+            emoji_map = {
+                "ANALYSIS_EXECUTED": "📊",
+                "ANALYSIS_STARTED": "🔍",
+                "TRADE_EXECUTED": "💰",
+                "CONFIG_CHANGED": "⚙️",
+                "MODE_CHANGED": "🔀",
+                "ERROR_OCCURRED": "❌",
+                "ANALYSIS_FAILED": "⚠️",
+            }
+            emoji = emoji_map.get(action, "📌")
+
+            # Construir mensaje
+            if action == "ANALYSIS_EXECUTED":
+                decision = details.get("decision", "HOLD")
+                confidence = details.get("confidence", 0)
+                msg = f"{emoji} Análisis: {decision} (conf: {confidence*100:.0f}%)"
+                if symbol:
+                    msg += f" | {symbol}"
+
+            elif action == "TRADE_EXECUTED":
+                direction = details.get("direction", "?")
+                lot_size = details.get("lot_size", 0)
+                auto = " AUTO" if details.get("automatic") else " MANUAL"
+                msg = f"{emoji} Trade{auto}: {direction} {lot_size} lotes"
+                if symbol:
+                    msg += f" | {symbol}"
+
+            elif action == "CONFIG_CHANGED":
+                param = details.get("parameter", "?")
+                new_val = details.get("new_value", "?")
+                msg = f"{emoji} Config: {param} → {new_val}"
+
+            elif action == "ERROR_OCCURRED":
+                error_type = details.get("error_type", "Unknown")
+                msg = f"{emoji} Error: {error_type}"
+
+            else:
+                msg = f"{emoji} {action}"
+                if symbol:
+                    msg += f" | {symbol}"
+
+            # Mostrar con color según status
+            if status == "success":
+                st.success(f"[{time_str}] {msg}", icon="✅")
+            elif status == "failed":
+                st.error(f"[{time_str}] {msg}", icon="❌")
+            elif status == "warning":
+                st.warning(f"[{time_str}] {msg}", icon="⚠️")
+            else:
+                st.info(f"[{time_str}] {msg}", icon="ℹ️")
+    else:
+        st.info("No hay actividades registradas aún.")
 
 
 # --- AUTO-REFRESCO ---

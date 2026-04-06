@@ -32,7 +32,6 @@ class LicenseManager:
             config: Instancia de ConfigLoader
         """
         self.license_key = config.license_key
-        self.sheet_id = config.google_sheet_id
         self.cache_file = self.CACHE_FILE
 
         # Crear directorio data si no existe
