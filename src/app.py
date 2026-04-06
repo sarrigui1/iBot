@@ -314,12 +314,25 @@ with tab_dash:
                         # Fundamental block — enriquece el contexto IA con noticias
                         _hdr   = t["fundamental_block_hdr"]
                         _lines = [f"{_hdr}:"]
+
+                        # Sentimiento de mercado
                         if not sentiment.get("error"):
                             _lines.append(
                                 f"  Sentiment: {sentiment.get('label','N/A')} "
                                 f"(score={sentiment.get('score',0):.2f}, "
                                 f"buzz={sentiment.get('buzz',0)})"
                             )
+
+                        # Análisis interpretativo de noticias recientes
+                        _recent_news = news_data.get("_recent_news", [])
+                        if _recent_news and not sentiment.get("error"):
+                            logger.debug(f"Analizando {len(_recent_news)} noticias para {selected_symbol}")
+                            _news_analysis = ai_agent.analyze_news_sentiment(
+                                selected_symbol, _recent_news, sentiment, lang=lang
+                            )
+                            _lines.append(f"  News Analysis: {_news_analysis}")
+
+                        # Eventos económicos de alto impacto
                         _events = news_data.get("high_impact", [])
                         if _events:
                             for _ev in _events[:3]:
@@ -330,11 +343,14 @@ with tab_dash:
                                 )
                         else:
                             _lines.append(f"  {t['news_no_events']}")
+
+                        # News shield gate
                         if shield.get("blocking"):
                             _lines.append(
                                 f"  NEWS SHIELD BLOCKING: {shield.get('event_name','?')} "
                                 f"({shield.get('currency','?')}) in {shield.get('mins_away','?')} min"
                             )
+
                         _fundamental_blk = "\n".join(_lines)
                         ai_res = ai_agent.get_strategy_decision(
                             selected_symbol, mtf_state, acc,

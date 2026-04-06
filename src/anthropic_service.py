@@ -10,6 +10,7 @@ import anthropic
 import json
 import os
 import time
+from debug_logger import DebugLogger
 
 # La configuración ahora se inyecta desde app.py (ConfigLoader)
 # Las credenciales pueden venir de:
@@ -111,6 +112,62 @@ class AnthropicService:
             )
 
         self.client = anthropic.Anthropic(api_key=api_key)
+
+    def analyze_news_sentiment(
+        self,
+        symbol: str,
+        recent_news: list,
+        sentiment: dict,
+        lang: str = "es",
+    ) -> str:
+        """
+        Analiza noticias recientes y retorna un párrafo interpretativo.
+
+        Args:
+            symbol: Par de trading (ej: "EURUSD")
+            recent_news: Lista de noticias con headline, source, datetime
+            sentiment: Dict con {label, score, bullish_pct, bearish_pct, buzz}
+            lang: "es" o "en"
+
+        Returns:
+            Párrafo corto (2-3 líneas) con interpretación de las noticias
+        """
+        from i18n import get_translations
+        t = get_translations(lang)
+
+        if not recent_news or not recent_news[0]:
+            return t.get("news_analysis_no_news", "No recent news available.")
+
+        # Construir prompt conciso para la IA
+        headlines_text = "\n".join([
+            f"- {n.get('headline', 'N/A')}"
+            for n in recent_news[:5]
+        ])
+
+        prompt = f"""You are a forex news analyst. Analyze these recent news headlines for {symbol} and provide a SHORT 1-2 sentence interpretation of market implications. Be concise and actionable.
+
+Sentiment: {sentiment.get('label', 'NEUTRAL')} (score: {sentiment.get('score', 0):.2f})
+Recent headlines:
+{headlines_text}
+
+Provide ONLY the interpretation in {lang.upper()} (no metadata, no JSON)."""
+
+        try:
+            response = self.client.messages.create(
+                model=self.MODEL,
+                max_tokens=150,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            analysis = response.content[0].text.strip()
+            logger = DebugLogger()
+            logger.debug(f"News analysis for {symbol}: {analysis}")
+            return analysis
+
+        except Exception as e:
+            logger = DebugLogger()
+            logger.error(f"Error analyzing news: {e}")
+            return f"Análisis de noticias indisponible ({str(e)[:50]})"
 
     def get_strategy_decision(
         self,

@@ -1,0 +1,293 @@
+================================================================================
+ANÁLISIS INTERPRETATIVO DE NOTICIAS CON IA
+================================================================================
+Fecha: 2026-04-05
+Versión: 1.0
+
+================================================================================
+RESUMEN
+================================================================================
+
+La IA ahora analiza noticias recientes para cada símbolo y genera un párrafo
+interpretativo que explica:
+
+1. QUÉ DICE el mercado (titulares recientes)
+2. QUÉ SIGNIFICA para el trading (interpretación)
+3. CÓMO AFECTA la decisión (acción sugerida)
+
+================================================================================
+COMO FUNCIONA
+================================================================================
+
+1. OBTENCIÓN DE NOTICIAS
+   └─ NewsService obtiene titulares recientes de Finnhub
+   └─ Filtra por símbolo (ej: EUR, USD en EURUSD)
+   └─ Cachea por 30 minutos (usando Streamlit)
+
+2. ANÁLISIS DE SENTIMIENTO
+   └─ Calcula % de noticias bullish vs bearish
+   └─ Genera score -1.0 a +1.0
+   └─ Label: BULLISH, BEARISH, NEUTRAL
+
+3. ANÁLISIS INTERPRETATIVO (NUEVO)
+   └─ La IA lee los titulares
+   └─ Escribe análisis corto (1-2 oraciones)
+   └─ Explica implicaciones para el trading
+
+4. INTEGRACIÓN EN DECISIÓN AI
+   └─ El análisis se incluye en fundamental_block
+   └─ La IA principal lo considera en su decisión
+   └─ Resultado: decisiones más informadas
+
+================================================================================
+EJEMPLO DE SALIDA
+================================================================================
+
+Antes (sin análisis interpretativo):
+────────────────────────────────────────────────────────────────────
+
+FUNDAMENTAL CONTEXT:
+  Sentiment: BULLISH (score=0.35, buzz=12)
+  Event: GDP Release [EUR] in 45 min
+  No additional context
+
+Después (CON análisis interpretativo):
+────────────────────────────────────────────────────────────────────
+
+FUNDAMENTAL CONTEXT:
+  Sentiment: BULLISH (score=0.35, buzz=12)
+  News Analysis: Datos de empleo de la eurozona muestran recuperación,
+                  con mercados esperando un posible cambio en tasas de
+                  interés. Esto podría fortalecer EUR en corto plazo.
+  Event: GDP Release [EUR] in 45 min
+
+Como ves, ahora la IA no solo ve números, sino que entiende el contexto
+de las noticias y puede tomar decisiones más informadas.
+
+================================================================================
+PROCESO TÉCNICO
+================================================================================
+
+1. Usuario hace clic en "Analizar"
+
+2. App llama a AnthropicService.analyze_news_sentiment():
+   └─ Parámetros:
+      • symbol: "EURUSD"
+      • recent_news: [lista de titulares]
+      • sentiment: {label, score, bullish_pct, ...}
+      • lang: "es" o "en"
+
+3. AnthropicService envía prompt a Claude API:
+   ┌─────────────────────────────────────────────────────────┐
+   │ "You are a forex news analyst. Analyze these            │
+   │ headlines for EURUSD and provide a SHORT 1-2 sentence   │
+   │ interpretation of market implications.                   │
+   │                                                          │
+   │ Sentiment: BULLISH (score: 0.35)                        │
+   │ Headlines:                                               │
+   │ - ECB keeps rates unchanged, signals patience           │
+   │ - Eurozone unemployment falls to 6.2%                   │
+   │ - Strong manufacturing data in Germany                  │
+   │                                                          │
+   │ Provide analysis in SPANISH"                            │
+   └─────────────────────────────────────────────────────────┘
+
+4. Claude retorna análisis corto:
+   └─ "Recuperación económica europea podría llevar a
+       presión alcista en EUR, especialmente si CEB ajusta
+       política monetaria próximamente."
+
+5. App integra análisis en fundamental_block
+
+6. IA principal recibe:
+   └─ Technical data (SMC, EMA, RSI)
+   └─ Sentiment data (bullish %)
+   └─ NEWS INTERPRETATION ← NUEVO
+   └─ Economic events
+   └─ Account data
+
+7. IA genera decisión (BUY/SELL/HOLD) con mayor contexto
+
+================================================================================
+CONFIGURACIÓN
+================================================================================
+
+La funcionalidad está habilitada por defecto. NO requiere configuración.
+
+Requiere:
+  ✓ ANTHROPIC_API_KEY configurada en config.ini
+  ✓ FINNHUB_API_KEY configurada (para obtener noticias)
+  ✓ Conexión a internet
+
+Si Finnhub API no está configurada:
+  └─ NewsService retorna error silenciosamente
+  └─ App no incluye análisis de noticias
+  └─ IA funciona igual, solo sin contexto de noticias
+
+================================================================================
+IMPACTO EN LA TOMA DE DECISIONES
+================================================================================
+
+SIN análisis de noticias:
+  ├─ IA ve: "Sentiment: BULLISH (score: 0.35)"
+  └─ Interpretación: "El sentimiento es alcista... quizás"
+
+CON análisis de noticias:
+  ├─ IA lee: "Datos de empleo fuertes, mercado espera cambio de tasas"
+  └─ Interpretación: "Claro por qué es alcista. Acción sugerida: COMPRA"
+
+Resultado: Decisiones más confiables y razonadas.
+
+================================================================================
+MODELO UTILIZADO PARA ANÁLISIS
+================================================================================
+
+Claude Haiku 4.5 (claude-haiku-4-5-20251001)
+  ├─ Rápido (respuesta en <2 segundos)
+  ├─ Económico (~$0.003 por análisis)
+  ├─ Suficientemente inteligente para análisis de noticias
+  └─ Max tokens: 150 (respuesta corta garantizada)
+
+Alternativa (más caro pero mejor):
+  └─ Claude Sonnet 4.6 (más análisis profundo)
+
+Cambiar el modelo en src/anthropic_service.py línea 86:
+  MODEL = "claude-haiku-4-5-20251001"  ← cambiar a "claude-sonnet-4-6"
+
+================================================================================
+LIMITACIONES Y CONSIDERACIONES
+================================================================================
+
+1. ANÁLISIS RÁPIDO, NO PROFUNDO
+   └─ Método diseñado para ser rápido (max 150 tokens)
+   └─ Para análisis profundo, usar herramienta separada
+
+2. DEPENDE DE CALIDAD DE NOTICIAS
+   └─ Si Finnhub retorna pocos titulares, análisis limitado
+   └─ Si no hay noticias relevantes, retorna "No news available"
+
+3. IDIOMA
+   └─ Responde en idioma solicitado (config.ini LANGUAGE)
+   └─ ES: Español, EN: English
+
+4. LATENCIA
+   └─ Añade ~2 segundos al análisis (llamada extra a Claude)
+   └─ Aceptable para decisiones de trading (que ya toman 5+ segundos)
+
+5. COSTO API
+   └─ Cada análisis cuesta ~$0.003 (Haiku)
+   └─ Con 5 símbolos analizados cada 5 min = ~$0.02-0.03/hora
+   └─ ~$0.20-0.30/día si se analiza continuamente
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+"Análisis de noticias indisponible"
+  └─ Causa: API key de Anthropic no válida
+  └─ Solución: Verifica config.ini [API_KEYS] ANTHROPIC_API_KEY
+
+"No recent news available"
+  └─ Causa: Finnhub API no retornó titulares
+  └─ Solución: Espera a que haya noticias relevantes
+  └─ O configura FINNHUB_API_KEY en variables de entorno
+
+"Error calling Claude API"
+  └─ Causa: Conexión fallida a Anthropic
+  └─ Solución: Verifica conexión a internet
+  └─ Revisa en https://status.anthropic.com/ si hay incidencias
+
+"Analysis doesn't match sentiment"
+  └─ Esto es normal - la IA agrega contexto que el sentiment no captura
+  └─ Sentimiento solo mira titulares
+  └─ Análisis interpreta IMPLICACIONES de esos titulares
+
+================================================================================
+PROXIMAS MEJORAS
+================================================================================
+
+1. Cache persistente de análisis
+   └─ Evitar re-analizar las mismas noticias
+   └─ Ahorrar API calls
+
+2. Análisis comparativo
+   └─ Comparar sentimiento actual vs histórico
+   └─ Detectar cambios de tendencia
+
+3. Integración con eventos económicos
+   └─ Análisis más profundo antes de eventos High Impact
+   └─ Evitar análisis durante noticias conflictivas
+
+4. Análisis de múltiples fuentes
+   └─ No solo Finnhub, también Bloomberg, Reuters, etc.
+   └─ Mayor diversidad de opiniones
+
+5. Feedback loop
+   └─ IA aprende cuáles análisis generaban buenas trades
+   └─ Adapta peso del análisis de noticias
+
+================================================================================
+LOGS Y DEBUGGING
+================================================================================
+
+Para ver análisis de noticias en logs:
+
+1. Activa DEBUG_MODE = true en config.ini
+
+2. Abre data/ibot.log después de ejecutar análisis
+
+3. Busca línea:
+   [2026-04-05 10:30:47] [DEBUG   ] News analysis for EURUSD: ...
+
+Esto mostrará exactamente qué análisis generó la IA.
+
+================================================================================
+EJEMPLOS REALES
+================================================================================
+
+EJEMPLO 1: EURUSD con noticias alcistas
+────────────────────────────────────────────────────────────────────
+
+Sentiment: BULLISH (score: 0.40, buzz: 8)
+
+Headlines:
+- ECB unlikely to cut rates further, says Lagarde
+- Eurozone CPI falls back to 2% target
+- German factory orders beat expectations
+
+IA Analysis:
+"Datos europeos positivos con postura hawkish del BCE sugieren fortaleza
+del EUR. Si se confirma estabilidad inflacionaria, podrían subir tasas."
+
+Acción: COMPRA EUR/USD (RR 1:2.5, SL 50 pips, TP 125 pips)
+
+EJEMPLO 2: GBPUSD con noticias mixtas
+────────────────────────────────────────────────────────────────────
+
+Sentiment: NEUTRAL (score: 0.05, buzz: 12)
+
+Headlines:
+- UK GDP misses forecast, Q1 contraction feared
+- BoE holds rates steady, cautious outlook
+- GBP weakens on economic uncertainty
+
+IA Analysis:
+"Incertidumbre económica británica presiona GBP pesar de expectativas
+de tasas. Esperar confirmación de datos antes de operar."
+
+Acción: HOLD (Esperar más claridad)
+
+================================================================================
+SOPORTE Y DOCUMENTACIÓN
+================================================================================
+
+Para más información sobre:
+  - Noticias: Leer SISTEMA_DEBUG_LOGGING.txt
+  - API keys: Leer CONFIGURAR_ANTHROPIC_API_KEY.txt
+  - Logs: Leer SISTEMA_DEBUG_LOGGING.txt
+
+Para problemas:
+  - Email: support@ibot-trading.com
+  - Incluye: logs (data/ibot.log), titulares analizados, config (sin keys)
+
+================================================================================
